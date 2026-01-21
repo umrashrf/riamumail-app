@@ -62,7 +62,11 @@ class SetupApp(toga.App):
         )
 
         status_box = toga.Box(
-            children=[self.loader, self.ip_label, self.port_status],
+            children=[
+                self.loader,
+                # self.ip_label,
+                # self.port_status
+            ],
             style=Pack(direction=COLUMN, padding=20),
         )
 
@@ -107,7 +111,10 @@ class SetupApp(toga.App):
 
         checks_box = toga.Box(
             children=[
-                toga.Label("System Checks", style=Pack(padding=(0, 0, 10, 0))),
+                toga.Label(
+                    "System Checks",
+                    style=Pack(padding=(0, 0, 10, 0), font_size=18, font_weight="bold"),
+                ),
                 self.checklist_box,
             ],
             style=Pack(direction=COLUMN, padding=20),
@@ -139,12 +146,12 @@ class SetupApp(toga.App):
         main_box = toga.Box(
             children=[
                 status_box,
+                checks_box,
                 network_box,
                 email_box,
-                checks_box,
                 action_box,
             ],
-            style=Pack(direction=COLUMN, padding=20, alignment="center"),
+            style=Pack(direction=COLUMN, padding=10, alignment="center"),
         )
 
         self.domain_input.on_change = self.trigger_checks
@@ -271,8 +278,17 @@ class SetupApp(toga.App):
     def add_check(self, label, ok):
         icon = "✓" if ok else "✗"
         color = "green" if ok else "red"
+
         self.checklist_box.add(
-            toga.Label(f"{icon} {label}", style=Pack(padding=(2, 0), color=color))
+            toga.Label(
+                f"{icon} {label}",
+                style=Pack(
+                    padding=(4, 0),
+                    color=color,
+                    font_size=16,  # ← increase this
+                    font_weight="bold",  # optional
+                ),
+            )
         )
 
     # ------------------ EVENTS ------------------
