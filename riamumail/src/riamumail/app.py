@@ -34,8 +34,8 @@ class SetupApp(toga.App):
 
     def show_welcome_screen(self):
         welcome_label = toga.Label(
-            "Welcome!\nThis app will help you verify your system and network setup.",
-            style=Pack(padding=20, text_align="center"),
+            "Welcome\n\nThis utility verifies your system and network setup.",
+            style=Pack(padding=40, text_align="center"),
         )
 
         setup_btn = toga.Button(
@@ -52,43 +52,99 @@ class SetupApp(toga.App):
     # ------------------ SETUP SCREEN ------------------
 
     def show_setup_screen(self):
-        self.loader = toga.ProgressBar(max=None, style=Pack(padding=5))
+        self.loader = toga.ProgressBar(max=None, style=Pack(padding=(0, 0, 10, 0)))
 
-        self.ip_label = toga.Label("IP: checking...")
-        self.domain_input = toga.TextInput(placeholder="example.com")
-        self.user_input = toga.TextInput(placeholder="email username")
-        self.email_display = toga.TextInput(readonly=True)
+        # ---------- STATUS ----------
+        self.ip_label = toga.Label("IP: checking...", style=Pack(padding=(0, 0, 5, 0)))
 
-        self.port_input = toga.TextInput(value="36245")
-        self.port_status = toga.Label("Port: checking...")
-
-        self.checklist_box = toga.Box(style=Pack(direction=COLUMN, padding=10))
-
-        save_btn = toga.Button("Save", on_press=self.save_data)
-        thunderbird_btn = toga.Button(
-            "Open Thunderbird", on_press=self.open_thunderbird
+        self.port_status = toga.Label(
+            "Port: checking...", style=Pack(padding=(0, 0, 10, 0))
         )
 
+        status_box = toga.Box(
+            children=[self.loader, self.ip_label, self.port_status],
+            style=Pack(direction=COLUMN, padding=20),
+        )
+
+        # ---------- NETWORK ----------
+        self.domain_input = toga.TextInput(
+            placeholder="example.com", style=Pack(padding=5)
+        )
+
+        self.port_input = toga.TextInput(
+            readonly=True, value="36245", style=Pack(padding=5)
+        )
+
+        network_box = toga.Box(
+            children=[
+                toga.Label("Network", style=Pack(padding=(0, 0, 10, 0))),
+                toga.Label("Domain"),
+                self.domain_input,
+                toga.Label("Port"),
+                self.port_input,
+            ],
+            style=Pack(direction=COLUMN, padding=20),
+        )
+
+        # ---------- EMAIL ----------
+        self.user_input = toga.TextInput(placeholder="username", style=Pack(padding=5))
+
+        self.email_display = toga.TextInput(readonly=True, style=Pack(padding=5))
+
+        email_box = toga.Box(
+            children=[
+                toga.Label("Email", style=Pack(padding=(0, 0, 10, 0))),
+                toga.Label("Username"),
+                self.user_input,
+                toga.Label("Email address"),
+                self.email_display,
+            ],
+            style=Pack(direction=COLUMN, padding=20),
+        )
+
+        # ---------- CHECKLIST ----------
+        self.checklist_box = toga.Box(style=Pack(direction=COLUMN, padding=10))
+
+        checks_box = toga.Box(
+            children=[
+                toga.Label("System Checks", style=Pack(padding=(0, 0, 10, 0))),
+                self.checklist_box,
+            ],
+            style=Pack(direction=COLUMN, padding=20),
+        )
+
+        # ---------- ACTIONS ----------
+        save_btn = toga.Button(
+            "Save", on_press=self.save_data, style=Pack(padding=(5, 10))
+        )
+        save_btn.style.padding = (5, 10, 5, 0)
+
+        thunderbird_btn = toga.Button(
+            "Open Thunderbird",
+            on_press=self.open_thunderbird,
+            style=Pack(padding=(5, 10)),
+        )
+        thunderbird_btn.style.padding = (5, 0)
+
+        action_box = toga.Box(
+            children=[
+                toga.Box(style=Pack(flex=1)),  # spacer
+                save_btn,
+                thunderbird_btn,
+            ],
+            style=Pack(direction=ROW, padding=20),
+        )
+
+        # ---------- MAIN ----------
         main_box = toga.Box(
             children=[
-                self.loader,
-                self.ip_label,
-                toga.Label("Domain:"),
-                self.domain_input,
-                toga.Label("Email username:"),
-                self.user_input,
-                toga.Label("Email address:"),
-                self.email_display,
-                toga.Label("Port:"),
-                self.port_input,
-                self.port_status,
-                self.checklist_box,
-                toga.Box(
-                    children=[save_btn, thunderbird_btn],
-                    style=Pack(direction=ROW, padding=10),
-                ),
+                status_box,
+                network_box,
+                email_box,
+                checks_box,
+                action_box,
             ],
-            style=Pack(direction=COLUMN, padding=10),
+            style=Pack(direction=COLUMN, padding=20, alignment="center"),
         )
 
         self.domain_input.on_change = self.trigger_checks
@@ -97,15 +153,9 @@ class SetupApp(toga.App):
         self.main_window.content = main_box
 
         config = self.load_config()
-
-        if "domain" in config:
-            self.domain_input.value = config["domain"]
-
-        if "username" in config:
-            self.user_input.value = config["username"]
-
+        self.domain_input.value = config.get("domain", "")
+        self.user_input.value = config.get("username", "")
         self.update_email(None)
-
         self.start_checks()
 
     # ------------------ BACKGROUND CHECKS ------------------
@@ -221,7 +271,9 @@ class SetupApp(toga.App):
     def add_check(self, label, ok):
         icon = "✓" if ok else "✗"
         color = "green" if ok else "red"
-        self.checklist_box.add(toga.Label(f"{icon} {label}", style=Pack(color=color)))
+        self.checklist_box.add(
+            toga.Label(f"{icon} {label}", style=Pack(padding=(2, 0), color=color))
+        )
 
     # ------------------ EVENTS ------------------
 
