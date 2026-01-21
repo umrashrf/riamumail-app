@@ -10,14 +10,14 @@ import requests
 import subprocess
 from pathlib import Path
 
-CONFIG_PATH = Path.home() / ".my_toga_app"
+CONFIG_PATH = Path.home() / ".riamumail"
 CONFIG_FILE = CONFIG_PATH / "config.json"
 
 
 class SetupApp(toga.App):
 
     def startup(self):
-        self.main_window = toga.MainWindow(title=self.formal_name)
+        self.main_window = toga.MainWindow(title=self.formal_name, size=(800, 600))
 
         self.ip = ""
         self.domain_ok = False
@@ -33,21 +33,131 @@ class SetupApp(toga.App):
     # ------------------ WELCOME SCREEN ------------------
 
     def show_welcome_screen(self):
-        welcome_label = toga.Label(
-            "Welcome\n\nThis utility verifies your system and network setup.",
-            style=Pack(padding=40, text_align="center"),
+        title = toga.Label(
+            "Welcome to Riamu Mail",
+            style=Pack(
+                padding=10,
+                text_align="center",
+                font_size=16,
+            ),
         )
 
-        setup_btn = toga.Button(
-            "Setup", on_press=lambda w: self.show_setup_screen(), style=Pack(padding=10)
+        subtitle = toga.Label(
+            "Riamu Mail lets you setup your own email server at your own terms.",
+            style=Pack(
+                padding=20,
+                text_align="center",
+                font_size=12,
+            ),
         )
 
-        box = toga.Box(
-            children=[welcome_label, setup_btn],
-            style=Pack(direction=COLUMN, alignment="center"),
+        card_style = Pack(
+            direction=COLUMN,
+            padding=8,
+            width=180,
+            alignment="center",  # center content inside the box
         )
 
-        self.main_window.content = box
+        text_style = Pack(
+            font_size=11,
+            padding_top=4,
+        )
+
+        button_style = Pack(
+            font_size=11,
+            margin_top=10,
+            padding_top=10,
+            padding_bottom=10,
+        )
+
+        # ---------- FREE ----------
+        free_box = toga.Box(
+            children=[
+                toga.Label("Free", style=Pack(font_size=16, font_weight="bold")),
+                toga.Label("$0", style=Pack(font_size=12)),
+                toga.Label(
+                    "* Always free\n"
+                    "• Self-hosted\n"
+                    "• PC uptime\n"
+                    "• Manual updates\n"
+                    "• Port forwarding\n"
+                    "• Custom domain\n"
+                    "• Free subdomain\n"
+                    "• No backup",
+                    style=text_style,
+                ),
+                toga.Button(
+                    "Select Free",
+                    on_press=lambda w: self.show_setup_screen(),
+                    style=button_style,
+                ),
+            ],
+            style=card_style,
+        )
+
+        # ---------- PRO ----------
+        pro_box = toga.Box(
+            children=[
+                toga.Label("Pro", style=Pack(font_size=16, font_weight="bold")),
+                toga.Label("$5/mo · $50/yr", style=Pack(font_size=12)),
+                toga.Label(
+                    "• Includes Free\n"
+                    "• Cloud hosted\n"
+                    "• 100% uptime\n"
+                    "• Auto updates\n"
+                    "• Port guaranteed\n"
+                    "• Custom domain\n"
+                    "• Free subdomain\n"
+                    "• Email backups",
+                    style=text_style,
+                ),
+                toga.Button(
+                    "Select Pro",
+                    on_press=lambda w: self.show_setup_screen(),
+                    style=button_style,
+                ),
+            ],
+            style=card_style,
+        )
+
+        # ---------- ENTERPRISE ----------
+        enterprise_box = toga.Box(
+            children=[
+                toga.Label("Enterprise", style=Pack(font_size=16, font_weight="bold")),
+                toga.Label("Custom", style=Pack(font_size=12)),
+                toga.Label(
+                    "• Free + Pro\n"
+                    "• Custom infra\n"
+                    "• 100% uptime\n"
+                    "• Auto updates\n"
+                    "• Port guaranteed\n"
+                    "• Custom domain\n"
+                    "• Free subdomain\n"
+                    "• Email backups",
+                    style=text_style,
+                ),
+                toga.Button(
+                    "Select Enterprise",
+                    on_press=lambda w: self.show_setup_screen(),
+                    style=button_style,
+                ),
+            ],
+            style=card_style,
+        )
+
+        pricing_row = toga.Box(
+            children=[free_box, pro_box, enterprise_box],
+            style=Pack(direction=ROW, padding=10, alignment="center"),
+        )
+
+        self.main_window.content = toga.Box(
+            children=[title, subtitle, pricing_row],
+            style=Pack(
+                margin_top=40,
+                direction=COLUMN,
+                alignment="center",
+            ),
+        )
 
     # ------------------ SETUP SCREEN ------------------
 
