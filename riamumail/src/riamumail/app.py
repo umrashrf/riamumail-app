@@ -5,7 +5,9 @@ import os
 import sys
 import json
 import shutil
+import logging
 import tempfile
+import traceback
 import threading
 import socket
 import requests
@@ -14,11 +16,29 @@ from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".riamumail"
 CONFIG_FILE = CONFIG_PATH / "config.json"
+LOG_FILE = CONFIG_PATH / "app.log"
+
+
+def setup_logging():
+    try:
+        CONFIG_PATH.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(
+            filename=LOG_FILE,
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+        )
+        logging.info("Application started")
+    except Exception:
+        # Absolute last-resort fallback
+        pass
 
 
 class SetupApp(toga.App):
 
     def startup(self):
+        setup_logging()
+        logging.info("Startup called")
+
         self.main_window = toga.MainWindow(title=self.formal_name, size=(800, 600))
 
         self.ip = ""
@@ -280,24 +300,42 @@ class SetupApp(toga.App):
     # ------------------ BACKGROUND CHECKS ------------------
 
     def start_checks(self):
-        self.loader.start()
-        threading.Thread(target=self.run_checks, daemon=True).start()
+        try:
+            self.loader.start()
+            threading.Thread(target=self.run_checks_safe, daemon=True).start()
+        except Exception:
+            logging.exception("Failed to start checks")
+
+    def run_checks_safe(self):
+        try:
+            self.run_checks()
+        except Exception:
+            logging.exception("run_checks crashed")
+            self.app.loop.call_soon_threadsafe(self.loader.stop)
 
     def run_checks(self):
-        self.ip = self.get_public_ip()
-        domain = self.domain_input.value
-        port = int(self.port_input.value)
+        logging.info("Running system checks")
 
-        self.domain_ok = self.check_domain(domain)
-        self.port_ok = self.check_port(port)
+        try:
+            self.ip = self.get_public_ip()
+            domain = self.domain_input.value
+            port = int(self.port_input.value)
 
-        docker_ok = self.app_exists("docker")
-        thunderbird_ok = self.app_exists("thunderbird")
+            self.domain_ok = self.check_domain(domain)
+            self.port_ok = self.check_port(port)
 
-        if not docker_ok or not thunderbird_ok:
-            self.ensure_dependencies()
+            docker_ok = self.app_exists("docker")
+            thunderbird_ok = self.app_exists("thunderbird")
 
-        self.app.loop.call_soon_threadsafe(self.update_ui, docker_ok, thunderbird_ok)
+            if not docker_ok or not thunderbird_ok:
+                self.ensure_dependencies()
+
+            self.app.loop.call_soon_threadsafe(
+                self.update_ui, docker_ok, thunderbird_ok
+            )
+
+        except Exception:
+            logging.exception("Error during run_checks")
 
     def update_ui(self, docker_ok, thunderbird_ok):
         self.ip_label.text = f"IP: {self.ip}"
@@ -317,7 +355,16 @@ class SetupApp(toga.App):
             self.checklist_box.remove(child)
 
     def ensure_dependencies(self):
-        threading.Thread(target=self.install_missing_apps, daemon=True).start()
+        try:
+            threading.Thread(target=self.install_missing_apps_safe, daemon=True).start()
+        except Exception:
+            logging.exception("Failed to start dependency installer")
+
+    def install_missing_apps_safe(self):
+        try:
+            self.install_missing_apps()
+        except Exception:
+            logging.exception("Dependency installation crashed")
 
     def install_missing_apps(self):
         if not self.app_exists("docker"):
@@ -334,22 +381,28 @@ class SetupApp(toga.App):
         self.app.loop.call_soon_threadsafe(self.update_ui, docker_ok, thunderbird_ok)
 
     def install_docker(self):
-        system = sys.platform
+        try:
+            logging.info("Installing Docker")
+            system = sys.platform
 
-        if system == "win32":
-            url = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
-            installer = self.download_file(url)
-            subprocess.Popen([installer, "install", "--quiet", "--accept-license"])
-        elif system == "darwin":
-            url = "https://desktop.docker.com/mac/main/arm64/Docker.dmg"
-            dmg = self.download_file(url)
+            if system == "win32":
+                url = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
+                installer = self.download_file(url)
+                subprocess.Popen([installer, "install", "--quiet", "--accept-license"])
 
-            subprocess.Popen(["hdiutil", "attach", dmg])
-            subprocess.Popen(
-                ["cp", "-R", "/Volumes/Docker/Docker.app", "/Applications"]
-            )
-        else:
-            subprocess.Popen(["sh", "-c", "curl -fsSL https://get.docker.com | sh"])
+            elif system == "darwin":
+                url = "https://desktop.docker.com/mac/main/arm64/Docker.dmg"
+                dmg = self.download_file(url)
+                subprocess.Popen(["hdiutil", "attach", dmg])
+                subprocess.Popen(
+                    ["cp", "-R", "/Volumes/Docker/Docker.app", "/Applications"]
+                )
+
+            else:
+                subprocess.Popen(["sh", "-c", "curl -fsSL https://get.docker.com | sh"])
+
+        except Exception:
+            logging.exception("Docker installation failed")
 
     def install_thunderbird(self):
         system = sys.platform
@@ -371,23 +424,30 @@ class SetupApp(toga.App):
             subprocess.Popen(["sh", "-c", "sudo apt install -y thunderbird"])
 
     def download_file(self, url):
-        temp_dir = tempfile.mkdtemp()
-        local_path = os.path.join(temp_dir, os.path.basename(url.split("?")[0]))
+        logging.info(f"Downloading: {url}")
+        try:
+            temp_dir = tempfile.mkdtemp()
+            local_path = os.path.join(temp_dir, os.path.basename(url.split("?")[0]))
 
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(local_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
+            with requests.get(url, stream=True, timeout=30) as r:
+                r.raise_for_status()
+                with open(local_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
 
-        return local_path
+            return local_path
+
+        except Exception:
+            logging.exception(f"Download failed: {url}")
+            raise
 
     # ------------------ HELPERS ------------------
 
     def get_public_ip(self):
         try:
             return requests.get("https://ipecho.net/plain", timeout=5).text.strip()
-        except:
+        except Exception:
+            logging.exception("Failed to fetch public IP")
             return "Unknown"
 
     def check_domain(self, domain):
@@ -493,21 +553,23 @@ class SetupApp(toga.App):
             with open(CONFIG_FILE, "r") as f:
                 return json.load(f)
         except Exception:
+            logging.exception("Failed to load config")
             return {}
 
     def save_config(self, data):
         try:
-            CONFIG_PATH.mkdir(exist_ok=False)
-        except:
-            pass
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(data, f)
+            CONFIG_PATH.mkdir(exist_ok=True)
+            with open(CONFIG_FILE, "w") as f:
+                json.dump(data, f)
+            logging.info("Config saved")
+        except Exception:
+            logging.exception("Failed to save config")
 
     def open_thunderbird(self, widget):
         try:
             subprocess.Popen(["thunderbird"])
-        except:
-            pass
+        except Exception:
+            logging.exception("Failed to open Thunderbird")
 
 
 def main():
