@@ -4,6 +4,8 @@ from toga.style.pack import COLUMN, ROW
 import os
 import sys
 import json
+import shutil
+import tempfile
 import threading
 import socket
 import requests
@@ -292,6 +294,9 @@ class SetupApp(toga.App):
         docker_ok = self.app_exists("docker")
         thunderbird_ok = self.app_exists("thunderbird")
 
+        if not docker_ok or not thunderbird_ok:
+            self.ensure_dependencies()
+
         self.app.loop.call_soon_threadsafe(self.update_ui, docker_ok, thunderbird_ok)
 
     def update_ui(self, docker_ok, thunderbird_ok):
@@ -310,6 +315,72 @@ class SetupApp(toga.App):
     def clear_checklist(self):
         for child in list(self.checklist_box.children):
             self.checklist_box.remove(child)
+
+    def ensure_dependencies(self):
+        threading.Thread(target=self.install_missing_apps, daemon=True).start()
+
+    def install_missing_apps(self):
+        if not self.app_exists("docker"):
+            self.add_check("Docker Desktop (installing…)", False)
+            self.install_docker()
+
+        if not self.app_exists("thunderbird"):
+            self.add_check("Thunderbird (installing…)", False)
+            self.install_thunderbird()
+
+        docker_ok = self.app_exists("docker")
+        thunderbird_ok = self.app_exists("thunderbird")
+
+        self.app.loop.call_soon_threadsafe(self.update_ui, docker_ok, thunderbird_ok)
+
+    def install_docker(self):
+        system = sys.platform
+
+        if system == "win32":
+            url = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
+            installer = self.download_file(url)
+            subprocess.Popen([installer, "install", "--quiet", "--accept-license"])
+        elif system == "darwin":
+            url = "https://desktop.docker.com/mac/main/arm64/Docker.dmg"
+            dmg = self.download_file(url)
+
+            subprocess.Popen(["hdiutil", "attach", dmg])
+            subprocess.Popen(
+                ["cp", "-R", "/Volumes/Docker/Docker.app", "/Applications"]
+            )
+        else:
+            subprocess.Popen(["sh", "-c", "curl -fsSL https://get.docker.com | sh"])
+
+    def install_thunderbird(self):
+        system = sys.platform
+
+        if system == "win32":
+            url = "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=en-US"
+            installer = self.download_file(url)
+
+            subprocess.Popen([installer, "/S"])
+        elif system == "darwin":
+            url = "https://download.mozilla.org/?product=thunderbird-latest&os=osx&lang=en-US"
+            dmg = self.download_file(url)
+
+            subprocess.Popen(["hdiutil", "attach", dmg])
+            subprocess.Popen(
+                ["cp", "-R", "/Volumes/Thunderbird/Thunderbird.app", "/Applications"]
+            )
+        else:
+            subprocess.Popen(["sh", "-c", "sudo apt install -y thunderbird"])
+
+    def download_file(self, url):
+        temp_dir = tempfile.mkdtemp()
+        local_path = os.path.join(temp_dir, os.path.basename(url.split("?")[0]))
+
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(local_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+        return local_path
 
     # ------------------ HELPERS ------------------
 
