@@ -18,6 +18,12 @@ CONFIG_PATH = Path.home() / ".riamumail"
 CONFIG_FILE = CONFIG_PATH / "config.json"
 LOG_FILE = CONFIG_PATH / "app.log"
 
+MAIL_EXP_REPO = "https://github.com/umrashrf/mailexp.git"
+MAIL_EXP_PATH = CONFIG_PATH / "mailexp"
+
+DOCKER_IMAGE = "mailexp:latest"
+DOCKER_CONTAINER = "mailexp"
+
 
 def setup_logging():
     try:
@@ -38,6 +44,14 @@ class SetupApp(toga.App):
     def startup(self):
         setup_logging()
         logging.info("Startup called")
+
+        self.check_run_id = 0
+        self.check_labels = {}
+
+        self.spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.spinner_index = 0
+        self.spinner_running = False
+        self.spinning_labels = set()
 
         self.main_window = toga.MainWindow(title=self.formal_name, size=(800, 600))
 
@@ -258,6 +272,12 @@ class SetupApp(toga.App):
         )
         save_btn.style.padding = (5, 10, 5, 0)
 
+        self.docker_btn = toga.Button(
+            "Start Mail Server",
+            on_press=self.toggle_container,
+            style=Pack(padding=(5, 10, 5, 0)),
+        )
+
         thunderbird_btn = toga.Button(
             "Open Thunderbird",
             on_press=self.open_thunderbird,
@@ -269,6 +289,7 @@ class SetupApp(toga.App):
             children=[
                 toga.Box(style=Pack(flex=1)),  # spacer
                 save_btn,
+                self.docker_btn,
                 thunderbird_btn,
             ],
             style=Pack(direction=ROW, padding=20),
@@ -300,20 +321,40 @@ class SetupApp(toga.App):
     # ------------------ BACKGROUND CHECKS ------------------
 
     def start_checks(self):
-        try:
-            self.loader.start()
-            threading.Thread(target=self.run_checks_safe, daemon=True).start()
-        except Exception:
-            logging.exception("Failed to start checks")
+        self.spinner_running = True
+        self._update_spinner()
+        self.check_run_id += 1
+        run_id = self.check_run_id
+        self.clear_checklist()
+        threading.Thread(
+            target=self.run_checks_safe,
+            args=(run_id,),
+            daemon=True,
+        ).start()
 
-    def run_checks_safe(self):
+    def _start_checks_ui(self):
+        self.check_run_id += 1
+        run_id = self.check_run_id
+
+        self.clear_checklist()
+        self.loader.start()
+
+        threading.Thread(
+            target=self.run_checks_safe,
+            args=(run_id,),
+            daemon=True,
+        ).start()
+
+    def run_checks_safe(self, run_id):
         try:
-            self.run_checks()
+            if run_id != self.check_run_id:
+                return
+            self.run_checks(run_id)
         except Exception:
             logging.exception("run_checks crashed")
-            self.app.loop.call_soon_threadsafe(self.loader.stop)
+            self.ui(self.loader.stop)
 
-    def run_checks(self):
+    def run_checks(self, run_id):
         logging.info("Running system checks")
 
         try:
@@ -324,6 +365,7 @@ class SetupApp(toga.App):
             self.domain_ok = self.check_domain(domain)
             self.port_ok = self.check_port(port)
 
+            git_ok = self.git_exists()
             docker_ok = self.app_exists("docker")
             thunderbird_ok = self.app_exists("thunderbird")
 
@@ -331,26 +373,53 @@ class SetupApp(toga.App):
                 self.ensure_dependencies()
 
             self.app.loop.call_soon_threadsafe(
-                self.update_ui, docker_ok, thunderbird_ok
+                self.update_ui, git_ok, docker_ok, thunderbird_ok, run_id
             )
 
         except Exception:
             logging.exception("Error during run_checks")
 
-    def update_ui(self, docker_ok, thunderbird_ok):
-        self.ip_label.text = f"IP: {self.ip}"
-        self.port_status.text = f"Port 36245: {'OPENED' if self.port_ok else 'CLOSED'}"
+    def ui(self, fn, *args):
+        """Safely run UI code on the main thread."""
+        self.app.loop.call_soon_threadsafe(fn, *args)
 
-        self.clear_checklist()
+    def update_ui(self, git_ok, docker_ok, thunderbird_ok, run_id):
+        if run_id != self.check_run_id:
+            return
 
+        self.spinner_running = False  # stop spinner
+
+        running = self.docker_container_running()
+        self.docker_btn.text = "Stop Mail Server" if running else "Start Mail Server"
+
+        self.add_check("Git", git_ok)
         self.add_check("Docker Desktop", docker_ok)
         self.add_check("Thunderbird", thunderbird_ok)
         self.add_check("Domain mapped to IP", self.domain_ok)
+        self.add_check("Mail server running", running)
         self.add_check("Port 36245 open", self.port_ok)
 
         self.loader.stop()
 
+    def _update_spinner(self):
+        if not self.spinner_running:
+            return
+
+        # Update all "pending" checks with spinner symbol
+        for label, widget in self.check_labels.items():
+            if widget.text.startswith("⟳") or widget.text.endswith("…"):
+                widget.text = f"{self.spinner_frames[self.spinner_index]} {label}…"
+
+        # Advance spinner
+        self.spinner_index = (self.spinner_index + 1) % len(self.spinner_frames)
+
+        # Schedule next tick
+        self.app.loop.call_later(0.1, self._update_spinner)
+
     def clear_checklist(self):
+        self.spinning_labels.clear()
+        self.check_labels.clear()
+
         for child in list(self.checklist_box.children):
             self.checklist_box.remove(child)
 
@@ -368,17 +437,18 @@ class SetupApp(toga.App):
 
     def install_missing_apps(self):
         if not self.app_exists("docker"):
-            self.add_check("Docker Desktop (installing…)", False)
+            self.ui(self.add_check, "Docker Desktop", None)
             self.install_docker()
 
         if not self.app_exists("thunderbird"):
-            self.add_check("Thunderbird (installing…)", False)
+            self.ui(self.add_check, "Thunderbird", None)
             self.install_thunderbird()
 
+        git_ok = self.git_exists()
         docker_ok = self.app_exists("docker")
         thunderbird_ok = self.app_exists("thunderbird")
 
-        self.app.loop.call_soon_threadsafe(self.update_ui, docker_ok, thunderbird_ok)
+        self.ui(self.update_ui, git_ok, docker_ok, thunderbird_ok, self.check_run_id)
 
     def install_docker(self):
         try:
@@ -517,20 +587,38 @@ class SetupApp(toga.App):
             return False
 
     def add_check(self, label, ok):
-        icon = "✓" if ok else "✗"
-        color = "green" if ok else "red"
+        if ok is True:
+            icon, color, text = "✓", "green", label
+            self.spinning_labels.discard(label)
 
-        self.checklist_box.add(
-            toga.Label(
-                f"{icon} {label}",
-                style=Pack(
-                    padding=(4, 0),
-                    color=color,
-                    font_size=16,  # ← increase this
-                    font_weight="bold",  # optional
-                ),
-            )
+        elif ok is False:
+            icon, color, text = "✗", "red", label
+            self.spinning_labels.discard(label)
+
+        else:
+            icon = self.spinner_frames[self.spinner_index]
+            color = "#f0ad4e"
+            text = f"{label}…"
+            self.spinning_labels.add(label)
+
+        if label in self.check_labels:
+            lbl = self.check_labels[label]
+            lbl.text = f"{icon} {text}"
+            lbl.style.color = color
+            return
+
+        lbl = toga.Label(
+            f"{icon} {text}",
+            style=Pack(
+                padding=(4, 0),
+                color=color,
+                font_size=16,
+                font_weight="bold",
+            ),
         )
+
+        self.check_labels[label] = lbl
+        self.checklist_box.add(lbl)
 
     # ------------------ EVENTS ------------------
 
@@ -570,6 +658,134 @@ class SetupApp(toga.App):
             subprocess.Popen(["thunderbird"])
         except Exception:
             logging.exception("Failed to open Thunderbird")
+
+    # ------------------ GIT HELPERS ------------------
+
+    def git_exists(self):
+        try:
+            subprocess.check_output(["git", "--version"])
+            return True
+        except Exception:
+            return False
+
+    def clone_mailexp_repo(self):
+        logging.info("Cloning mailexp repository")
+
+        if MAIL_EXP_PATH.exists():
+            return
+
+        MAIL_EXP_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+        subprocess.check_call(["git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)])
+
+    # ------------------ DOCKER HELPERS ------------------
+
+    def docker_image_exists(self):
+        try:
+            subprocess.check_output(
+                ["docker", "image", "inspect", DOCKER_IMAGE],
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def docker_container_running(self):
+        try:
+            output = subprocess.check_output(
+                [
+                    "docker",
+                    "ps",
+                    "--filter",
+                    f"name={DOCKER_CONTAINER}",
+                    "--format",
+                    "{{.Names}}",
+                ]
+            ).decode()
+            return DOCKER_CONTAINER in output
+        except Exception:
+            return False
+
+    def build_docker_image(self):
+        logging.info("Building Docker image")
+
+        if not self.git_exists():
+            raise RuntimeError("Git is not installed")
+
+        if not MAIL_EXP_PATH.exists():
+            self.app.loop.call_soon_threadsafe(
+                self.add_check,
+                "Cloning mail server repository",
+                None,
+            )
+            self.clone_mailexp_repo()
+
+        dockerfile = MAIL_EXP_PATH / "Dockerfile"
+        if not dockerfile.exists():
+            raise RuntimeError("Dockerfile not found after clone")
+
+        try:
+            self.app.loop.call_soon_threadsafe(
+                self.add_check,
+                "Building mail server image",
+                None,
+            )
+            subprocess.check_call(
+                ["docker", "build", "-t", DOCKER_IMAGE, "."],
+                cwd=MAIL_EXP_PATH,
+            )
+        except subprocess.CalledProcessError:
+            self.app.loop.call_soon_threadsafe(
+                self.add_check,
+                "Docker build failed (see logs)",
+                False,
+            )
+            raise
+
+    def start_container(self):
+        logging.info("Starting container")
+        subprocess.check_call(
+            [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                DOCKER_CONTAINER,
+                "--dns",
+                "8.8.8.8",
+                "--hostname",
+                self.domain_input.value,
+                "-p",
+                "36245:36245",
+                "-p",
+                "10143:143",
+                DOCKER_IMAGE,
+            ]
+        )
+
+    def stop_container(self):
+        logging.info("Stopping container")
+        subprocess.call(["docker", "rm", "-f", DOCKER_CONTAINER])
+
+    def toggle_container(self, widget):
+        threading.Thread(target=self.toggle_container_safe, daemon=True).start()
+
+    def toggle_container_safe(self):
+        try:
+            if not self.docker_image_exists():
+                self.build_docker_image()
+
+            if self.docker_container_running():
+                self.stop_container()
+            else:
+                self.start_container()
+
+        except Exception:
+            logging.exception("Docker toggle failed")
+
+        finally:
+            # Instead of calling start_checks() directly, marshal to main thread
+            self.ui(self.start_checks)
 
 
 def main():
