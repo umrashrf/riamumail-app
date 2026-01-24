@@ -219,6 +219,10 @@ class SetupApp(toga.App):
 
         # ---------- NETWORK ----------
         self.domain_input = toga.TextInput(style=Pack(padding=5))
+        self.domain_status_label = toga.Label(
+            "",
+            style=Pack(padding=(4, 0, 10, 0), font_size=10),
+        )
 
         self.port_input = toga.TextInput(
             readonly=True, value="36245", style=Pack(padding=5)
@@ -229,6 +233,7 @@ class SetupApp(toga.App):
                 toga.Label("Network", style=Pack(padding=(0, 0, 10, 0))),
                 toga.Label("Domain"),
                 self.domain_input,
+                self.domain_status_label,
                 toga.Label("Port"),
                 self.port_input,
             ],
@@ -318,7 +323,7 @@ class SetupApp(toga.App):
             style=Pack(direction=COLUMN, padding=5, alignment="center"),
         )
 
-        self.domain_input.on_change = self.trigger_checks
+        self.domain_input.on_change = self.on_domain_change
         self.firstname_input.on_change = self.update_email
         self.familyname_input.on_change = self.update_email
 
@@ -332,6 +337,51 @@ class SetupApp(toga.App):
         self.start_checks()
 
     # ------------------ BACKGROUND CHECKS ------------------
+
+    def check_domain_availability_http(self, domain):
+        try:
+            r = requests.get(
+                "https://riamu.email/api/domain/check",
+                params={"domain": domain},
+                timeout=5,
+            )
+            r.raise_for_status()
+            data = r.json()
+            return bool(data.get("available"))
+        except Exception:
+            logging.exception("Domain availability check failed")
+            return -1
+
+    def set_domain_status(self, status):
+        if status is 1:
+            self.domain_status_label.text = "✓ Domain is available"
+            self.domain_status_label.style.color = "green"
+
+        elif status is 0:
+            self.domain_status_label.text = "✗ Domain is not available"
+            self.domain_status_label.style.color = "red"
+
+        elif status is None:
+            self.domain_status_label.text = "⟳ Checking domain availability…"
+            self.domain_status_label.style.color = "#f0ad4e"
+
+        else:
+            self.domain_status_label.text = ""
+            self.domain_status_label.style.color = "#000000"
+
+    def trigger_domain_check(self):
+        domain = self.domain_input.value.strip()
+        if not domain:
+            return
+
+        # Show "checking..."
+        self.ui(self.set_domain_status, None)
+
+        def worker():
+            available = self.check_domain_availability_http(domain)
+            self.ui(self.set_domain_status, available)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def start_checks(self):
         self.spinner_running = True
@@ -641,7 +691,8 @@ class SetupApp(toga.App):
         )
         self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
 
-    def trigger_checks(self, widget):
+    def on_domain_change(self, widget):
+        self.trigger_domain_check()
         self.start_checks()
 
     def save_data(self, widget):
