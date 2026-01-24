@@ -21,6 +21,7 @@ test_sources = [
 ]
 
 requires = [
+    "requests"
 ]
 test_requires = [
     "pytest",
