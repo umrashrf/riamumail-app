@@ -1,6 +1,7 @@
 import toga
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW
+import re
 import os
 import sys
 import json
@@ -221,7 +222,7 @@ class SetupApp(toga.App):
         self.domain_input = toga.TextInput(style=Pack(padding=5))
         self.domain_status_label = toga.Label(
             "",
-            style=Pack(padding=(4, 0, 10, 0), font_size=10),
+            style=Pack(padding=(4, 0, 5, 0), font_size=10),
         )
 
         self.port_input = toga.TextInput(
@@ -230,7 +231,7 @@ class SetupApp(toga.App):
 
         network_box = toga.Box(
             children=[
-                toga.Label("Network", style=Pack(padding=(0, 0, 10, 0))),
+                toga.Label("Network", style=Pack(padding=(0, 0, 5, 0))),
                 toga.Label("Domain"),
                 self.domain_input,
                 self.domain_status_label,
@@ -259,8 +260,7 @@ class SetupApp(toga.App):
                 self.firstname_input,
                 toga.Label("Family Name"),
                 self.familyname_input,
-                toga.Label("Email", style=Pack(padding=(0, 0, 10, 0))),
-                toga.Label("Email address"),
+                toga.Label("Email address", style=Pack(padding=(10, 0, 5, 0))),
                 self.email_display,
                 toga.Label("Password"),
                 self.password_input,
@@ -686,12 +686,20 @@ class SetupApp(toga.App):
     # ------------------ EVENTS ------------------
 
     def update_email(self, widget):
-        self.domain_input.value = (
-            f"{(self.familyname_input.value or "family_name").lower()}.riamumail.com"
-        )
+        if not self.domain_input.value.startswith(self.familyname_input.value):
+            domain = self.domain_input.value
+            match = re.search(r"[^.]+\.[^.]+$", domain)
+            if match:
+                domain = match.group(0)
+            self.domain_input.value = (
+                f"{(self.familyname_input.value or "family_name").lower()}.{domain}"
+            )
+
         self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
 
     def on_domain_change(self, widget):
+        self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
+        
         self.trigger_domain_check()
         self.start_checks()
 
