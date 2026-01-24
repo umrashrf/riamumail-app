@@ -663,6 +663,14 @@ class SetupApp(toga.App):
         except Exception:
             logging.exception("Failed to save config")
 
+    def get_user_config(self):
+        config = self.load_config()
+        username = config.get("username", "umair")
+        domain = config.get("domain", "riamuapp.com")
+        password = config.get("password", "test")
+        email = f"{username}@{domain}"
+        return username, domain, password, email
+
     def open_thunderbird(self, widget):
         try:
             subprocess.Popen(["open", "/Applications/Thunderbird.app"])  # MacOS
@@ -730,10 +738,86 @@ class SetupApp(toga.App):
             )
             self.clone_mailexp_repo()
 
-        dockerfile = MAIL_EXP_PATH / "Dockerfile"
-        if not dockerfile.exists():
-            raise RuntimeError("Dockerfile not found after clone")
+        # Read username, domain, password, email
+        username, domain, password, email = self.get_user_config()
 
+        # ------------------ Replace users file ------------------
+        users_file = MAIL_EXP_PATH / "users"
+        users_content = (
+            f"{username}:{{PLAIN}}{password}:1000:1000::/home/{username}:/bin/false\n"
+        )
+        users_file.write_text(users_content)
+        logging.info(f"Replaced users file for {username}")
+
+        # ------------------ Replace aliases file ------------------
+        aliases_file = MAIL_EXP_PATH / "postfix/aliases"
+        aliases_content = f"""
+#
+# Generated aliases
+#
+{username}:          {email}
+
+# Basic system aliases -- these MUST be present
+MAILER-DAEMON:  postmaster
+postmaster:     root
+
+# General redirections for pseudo accounts
+bin:            root
+daemon:         root
+named:          root
+nobody:         root
+uucp:           root
+www:            root
+ftp-bugs:       root
+postfix:        root
+
+# Well-known aliases
+manager:        root
+dumper:         root
+operator:       root
+abuse:          postmaster
+
+# trap decode to catch security attacks
+decode:         root
+"""
+        aliases_file.write_text(aliases_content)
+        logging.info(f"Replaced aliases file for {username}")
+
+        # ------------------ Replace Dockerfile ------------------
+        dockerfile_path = MAIL_EXP_PATH / "Dockerfile"
+        dockerfile_content = f"""
+FROM alpine:latest
+
+RUN apk update
+RUN apk add busybox-extras vim
+RUN apk add postfix dovecot mailutils
+
+COPY postfix/* /etc/postfix/
+COPY dovecot.conf /etc/dovecot/
+COPY users /etc/dovecot/
+RUN chown root:dovecot /etc/dovecot/users
+RUN chmod 640 /etc/dovecot/users
+
+RUN adduser -D {username} mail
+RUN mkdir -p /home/{username}/Maildir/cur && \\
+    mkdir -p /home/{username}/Maildir/new && \\
+    mkdir -p /home/{username}/Maildir/tmp
+RUN chown {username}:{username} -R /home/{username}/Maildir
+RUN echo "{username}:{password}" | chpasswd
+
+RUN awk '{{gsub(/smtp\\t+25/, "smtp\\t\\t36245"); print}}' /etc/services > /tmp/services
+RUN cp /tmp/services /etc/ && rm /tmp/services
+
+RUN newaliases && postfix start
+
+ENTRYPOINT ["dovecot"]
+CMD ["-F"]
+"""
+
+        dockerfile_path.write_text(dockerfile_content)
+        logging.info(f"Replaced Dockerfile for {username}")
+
+        # ------------------ Build Docker image ------------------
         try:
             self.app.loop.call_soon_threadsafe(
                 self.add_check,
