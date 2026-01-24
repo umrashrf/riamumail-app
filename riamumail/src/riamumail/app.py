@@ -701,7 +701,7 @@ class SetupApp(toga.App):
     def docker_image_exists(self):
         try:
             subprocess.check_output(
-                ["docker", "image", "inspect", DOCKER_IMAGE],
+                ["/usr/local/bin/docker", "image", "inspect", DOCKER_IMAGE],
                 stderr=subprocess.DEVNULL,
             )
             return True
@@ -712,7 +712,7 @@ class SetupApp(toga.App):
         try:
             output = subprocess.check_output(
                 [
-                    "docker",
+                    "/usr/local/bin/docker",
                     "ps",
                     "--filter",
                     f"name={DOCKER_CONTAINER}",
@@ -825,7 +825,7 @@ CMD ["-F"]
                 None,
             )
             subprocess.check_call(
-                ["docker", "build", "-t", DOCKER_IMAGE, "."],
+                ["/usr/local/bin/docker", "build", "-t", DOCKER_IMAGE, "."],
                 cwd=MAIL_EXP_PATH,
             )
         except subprocess.CalledProcessError:
@@ -840,7 +840,7 @@ CMD ["-F"]
         logging.info("Starting container")
         subprocess.check_call(
             [
-                "docker",
+                "/usr/local/bin/docker",
                 "run",
                 "-d",
                 "--name",
@@ -859,7 +859,7 @@ CMD ["-F"]
 
     def stop_container(self):
         logging.info("Stopping container")
-        subprocess.call(["docker", "rm", "-f", DOCKER_CONTAINER])
+        subprocess.call(["/usr/local/bin/docker", "rm", "-f", DOCKER_CONTAINER])
 
     def toggle_container(self, widget):
         threading.Thread(target=self.toggle_container_safe, daemon=True).start()
