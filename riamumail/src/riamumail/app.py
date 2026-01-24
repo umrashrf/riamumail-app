@@ -12,6 +12,7 @@ import threading
 import socket
 import requests
 import subprocess
+import webbrowser
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".riamumail"
@@ -149,7 +150,7 @@ class SetupApp(toga.App):
                 ),
                 toga.Button(
                     "Select Pro",
-                    on_press=lambda w: self.show_setup_screen(),
+                    on_press=lambda w: webbrowser.open("https://riamu.mail/pro"),
                     style=button_style,
                 ),
             ],
@@ -174,7 +175,7 @@ class SetupApp(toga.App):
                 ),
                 toga.Button(
                     "Select Enterprise",
-                    on_press=lambda w: self.show_setup_screen(),
+                    on_press=lambda w: webbrowser.open("https://riamu.mail/enterprise"),
                     style=button_style,
                 ),
             ],
