@@ -218,9 +218,7 @@ class SetupApp(toga.App):
         )
 
         # ---------- NETWORK ----------
-        self.domain_input = toga.TextInput(
-            placeholder="example.com", style=Pack(padding=5)
-        )
+        self.domain_input = toga.TextInput(style=Pack(padding=5))
 
         self.port_input = toga.TextInput(
             readonly=True, value="36245", style=Pack(padding=5)
@@ -238,7 +236,12 @@ class SetupApp(toga.App):
         )
 
         # ---------- EMAIL ----------
-        self.user_input = toga.TextInput(placeholder="username", style=Pack(padding=5))
+        self.firstname_input = toga.TextInput(
+            placeholder="First Name", style=Pack(padding=5)
+        )
+        self.familyname_input = toga.TextInput(
+            placeholder="Family Name", style=Pack(padding=5)
+        )
         self.password_input = toga.PasswordInput(
             placeholder="password", style=Pack(padding=5)
         )
@@ -247,13 +250,15 @@ class SetupApp(toga.App):
 
         email_box = toga.Box(
             children=[
+                toga.Label("First Name"),
+                self.firstname_input,
+                toga.Label("Family Name"),
+                self.familyname_input,
                 toga.Label("Email", style=Pack(padding=(0, 0, 10, 0))),
-                toga.Label("Username"),
-                self.user_input,
-                toga.Label("Password"),
-                self.password_input,
                 toga.Label("Email address"),
                 self.email_display,
+                toga.Label("Password"),
+                self.password_input,
             ],
             style=Pack(direction=COLUMN, padding=20),
         )
@@ -298,7 +303,7 @@ class SetupApp(toga.App):
                 self.docker_btn,
                 thunderbird_btn,
             ],
-            style=Pack(direction=ROW, padding=20),
+            style=Pack(direction=ROW, padding=10),
         )
 
         # ---------- MAIN ----------
@@ -306,21 +311,22 @@ class SetupApp(toga.App):
             children=[
                 status_box,
                 checks_box,
-                network_box,
                 email_box,
+                network_box,
                 action_box,
             ],
-            style=Pack(direction=COLUMN, padding=10, alignment="center"),
+            style=Pack(direction=COLUMN, padding=5, alignment="center"),
         )
 
         self.domain_input.on_change = self.trigger_checks
-        self.user_input.on_change = self.update_email
+        self.firstname_input.on_change = self.update_email
+        self.familyname_input.on_change = self.update_email
 
         self.main_window.content = main_box
 
         config = self.load_config()
-        self.domain_input.value = config.get("domain", "")
-        self.user_input.value = config.get("username", "")
+        self.domain_input.value = config.get("domain", "family_name.riamumail.com")
+        self.firstname_input.value = config.get("username", "")
         self.password_input.value = config.get("password", "")
         self.update_email(None)
         self.start_checks()
@@ -630,7 +636,10 @@ class SetupApp(toga.App):
     # ------------------ EVENTS ------------------
 
     def update_email(self, widget):
-        self.email_display.value = f"{self.user_input.value}@{self.domain_input.value}"
+        self.domain_input.value = (
+            f"{(self.familyname_input.value or "family_name").lower()}.riamumail.com"
+        )
+        self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
 
     def trigger_checks(self, widget):
         self.start_checks()
@@ -639,7 +648,7 @@ class SetupApp(toga.App):
         self.save_config(
             {
                 "domain": self.domain_input.value,
-                "username": self.user_input.value,
+                "username": self.firstname_input.value,
                 "password": self.password_input.value,
             }
         )
