@@ -238,6 +238,9 @@ class SetupApp(toga.App):
 
         # ---------- EMAIL ----------
         self.user_input = toga.TextInput(placeholder="username", style=Pack(padding=5))
+        self.password_input = toga.PasswordInput(
+            placeholder="password", style=Pack(padding=5)
+        )
 
         self.email_display = toga.TextInput(readonly=True, style=Pack(padding=5))
 
@@ -246,6 +249,8 @@ class SetupApp(toga.App):
                 toga.Label("Email", style=Pack(padding=(0, 0, 10, 0))),
                 toga.Label("Username"),
                 self.user_input,
+                toga.Label("Password"),
+                self.password_input,
                 toga.Label("Email address"),
                 self.email_display,
             ],
@@ -259,7 +264,7 @@ class SetupApp(toga.App):
             children=[
                 toga.Label(
                     "System Checks",
-                    style=Pack(padding=(0, 0, 10, 0), font_size=18, font_weight="bold"),
+                    style=Pack(padding=(0, 0, 10, 0), font_size=16, font_weight="bold"),
                 ),
                 self.checklist_box,
             ],
@@ -315,6 +320,7 @@ class SetupApp(toga.App):
         config = self.load_config()
         self.domain_input.value = config.get("domain", "")
         self.user_input.value = config.get("username", "")
+        self.password_input.value = config.get("password", "")
         self.update_email(None)
         self.start_checks()
 
@@ -630,7 +636,11 @@ class SetupApp(toga.App):
 
     def save_data(self, widget):
         self.save_config(
-            {"domain": self.domain_input.value, "username": self.user_input.value}
+            {
+                "domain": self.domain_input.value,
+                "username": self.user_input.value,
+                "password": self.password_input.value,
+            }
         )
 
     def load_config(self):
@@ -655,7 +665,7 @@ class SetupApp(toga.App):
 
     def open_thunderbird(self, widget):
         try:
-            subprocess.Popen(["thunderbird"])
+            subprocess.Popen(["open", "/Applications/Thunderbird.app"])  # MacOS
         except Exception:
             logging.exception("Failed to open Thunderbird")
 
