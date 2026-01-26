@@ -377,6 +377,11 @@ class SetupApp(toga.App):
         if not domain:
             return
 
+        old_domain = self.load_config().get("domain")
+
+        if domain == old_domain:
+            return
+
         # Show "checking..."
         self.ui(self.set_domain_status, None)
 
