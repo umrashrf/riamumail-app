@@ -335,7 +335,7 @@ class SetupApp(toga.App):
         self.password_input.value = config.get("password", "")
         self.domain_input.value = config.get("domain", "family_name.riamumail.com")
         self.update_email(None)
-        
+
         self.domain_input.on_change = self.on_domain_change
         self.firstname_input.on_change = self.update_email
         self.familyname_input.on_change = self.update_email
@@ -543,7 +543,9 @@ class SetupApp(toga.App):
                 )
 
             else:
-                self.run_subprocess(["/bin/sh", "-c", "curl -fsSL https://get.docker.com | sh"])
+                self.run_subprocess(
+                    ["/bin/sh", "-c", "curl -fsSL https://get.docker.com | sh"]
+                )
 
         except Exception:
             logging.exception("Docker installation failed")
@@ -693,7 +695,37 @@ class SetupApp(toga.App):
 
         self.check_labels[label] = lbl
         self.checklist_box.add(lbl)
-    
+
+    def build_subprocess_env():
+        env = os.environ.copy()
+
+        extra_paths = []
+
+        if sys.platform == "darwin":
+            extra_paths = [
+                "/opt/homebrew/bin",
+                "/usr/local/bin",
+                "/usr/bin",
+            ]
+        elif sys.platform == "linux":
+            extra_paths = [
+                "/usr/local/bin",
+                "/usr/bin",
+                "/bin",
+            ]
+        elif sys.platform == "win32":
+            extra_paths = [
+                r"C:\Program Files\Docker\Docker\resources\bin",
+                r"C:\Program Files\Git\bin",
+            ]
+
+        existing = env.get("PATH", "")
+        env["PATH"] = os.pathsep.join(extra_paths + [existing])
+
+        return env
+
+    SUBPROCESS_ENV = build_subprocess_env()
+
     def run_subprocess(self, cmd, *, cwd=None, check=False):
         """
         Run a subprocess and log stdout/stderr line by line.
@@ -703,6 +735,7 @@ class SetupApp(toga.App):
         process = subprocess.Popen(
             cmd,
             cwd=cwd,
+            env=SUBPROCESS_ENV,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -732,7 +765,6 @@ class SetupApp(toga.App):
 
         logging.info("Command exited with code %s", return_code)
         return return_code
-
 
     # ------------------ EVENTS ------------------
 
@@ -933,14 +965,16 @@ class SetupApp(toga.App):
 
         MAIL_EXP_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-        self.run_subprocess(["/usr/bin/git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)])
+        self.run_subprocess(
+            ["/usr/bin/git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)]
+        )
 
     # ------------------ DOCKER HELPERS ------------------
 
     def docker_image_exists(self):
         try:
             subprocess.check_output(
-                ["/usr/local/bin/docker", "image", "inspect", DOCKER_IMAGE],
+                ["docker", "image", "inspect", DOCKER_IMAGE],
                 stderr=subprocess.DEVNULL,
             )
             return True
@@ -951,7 +985,7 @@ class SetupApp(toga.App):
         try:
             output = subprocess.check_output(
                 [
-                    "/usr/local/bin/docker",
+                    "docker",
                     "ps",
                     "-a",
                     "--filter",
@@ -968,7 +1002,7 @@ class SetupApp(toga.App):
         try:
             output = subprocess.check_output(
                 [
-                    "/usr/local/bin/docker",
+                    "docker",
                     "ps",
                     "--filter",
                     f"name={DOCKER_CONTAINER}",
@@ -1083,7 +1117,7 @@ CMD ["-F"]
                 None,
             )
             self.run_subprocess(
-                ["/usr/local/bin/docker", "build", "-t", DOCKER_IMAGE, "."],
+                ["docker", "build", "-t", DOCKER_IMAGE, "."],
                 cwd=MAIL_EXP_PATH,
             )
         except subprocess.CalledProcessError:
@@ -1098,7 +1132,7 @@ CMD ["-F"]
         logging.info("Starting container")
         self.run_subprocess(
             [
-                "/usr/local/bin/docker",
+                "docker",
                 "run",
                 "-d",
                 "--name",
@@ -1117,7 +1151,7 @@ CMD ["-F"]
 
     def stop_container(self):
         logging.info("Stopping container")
-        self.run_subprocess(["/usr/local/bin/docker", "rm", "-f", DOCKER_CONTAINER])
+        self.run_subprocess(["docker", "rm", "-f", DOCKER_CONTAINER])
 
     def toggle_container(self, widget):
         threading.Thread(target=self.toggle_container_safe, daemon=True).start()
@@ -1142,7 +1176,7 @@ CMD ["-F"]
     def remove_docker_image(self):
         logging.info("Removing Docker image if it exists")
         subprocess.call(
-            ["/usr/local/bin/docker", "rmi", "-f", DOCKER_IMAGE],
+            ["docker", "rmi", "-f", DOCKER_IMAGE],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
