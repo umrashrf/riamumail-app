@@ -26,6 +26,8 @@ MAIL_EXP_PATH = CONFIG_PATH / "mailexp"
 DOCKER_IMAGE = "mailexp:latest"
 DOCKER_CONTAINER = "mailexp"
 
+API_BASE = "https://riamu.email/api"
+
 
 def setup_logging():
     try:
@@ -342,7 +344,7 @@ class SetupApp(toga.App):
     def check_domain_availability_http(self, domain):
         try:
             r = requests.get(
-                "https://riamu.email/api/domain/check",
+                API_BASE + "/domain/check",
                 params={"domain": domain},
                 timeout=5,
             )
@@ -704,28 +706,72 @@ class SetupApp(toga.App):
         self.trigger_domain_check()
         self.start_checks()
 
+    def is_first_run(self):
+        return not CONFIG_FILE.exists()
+
     def save_data(self, widget):
-        if self.docker_container_running():
+        new_domain = self.domain_input.value
+
+        # ---------- FIRST RUN ----------
+        if self.is_first_run():
+
+            def worker():
+                self.reserve_domain(new_domain)
+                self.save_config(self.collect_config())
+                self.ui(self.start_checks)
+
+            threading.Thread(target=worker, daemon=True).start()
+            return
+
+        else:  # ---------- SUBSEQUENT RUNS ----------
+            if self.docker_container_running():
+                self.main_window.confirm_dialog(
+                    title="Confirm changes",
+                    message=(
+                        "Are you sure? "
+                        "Your mail server is currently running and "
+                        "saving new config will delete it and "
+                        "you will lose all your emails \n\n"
+                        "Do you want to continue?"
+                    ),
+                    on_result=self.on_save_confirmed,
+                )
+            else:
+                self.save_config(self.collect_config())
+
+        # ---------- DOMAIN CHANGE ----------
+        if self.domain_changed(new_domain):
             self.main_window.confirm_dialog(
-                title="Confirm changes",
+                title="Confirm domain change",
                 message=(
-                    "Are you sure? "
-                    "Your mail server is currently running and "
-                    "saving new config will delete it and "
-                    "you will lose all your emails \n\n"
+                    "You are changing your email domain.\n\n"
+                    "• The new domain may take a few minutes to a few hours to activate\n"
+                    "• In some cases it can take 24 hours or more\n\n"
                     "Do you want to continue?"
                 ),
-                on_result=self.on_save_confirmed,
+                on_result=lambda confirmed: self.on_domain_change_confirmed(
+                    confirmed, new_domain
+                ),
             )
-        else:
-            self.save_config(
-                {
-                    "domain": self.domain_input.value,
-                    "username": self.firstname_input.value,
-                    "familyname": self.familyname_input.value,
-                    "password": self.password_input.value,
-                }
-            )
+            return
+
+    def on_domain_change_confirmed(self, confirmed, new_domain):
+        if not confirmed:
+            logging.info("User cancelled domain change")
+            return
+
+        old_domain = self.load_config().get("domain")
+
+        def worker():
+            if old_domain:
+                self.release_domain(old_domain)
+
+            self.reserve_domain(new_domain)
+
+            self.save_config(self.collect_config())
+            self.ui(self.start_checks)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def on_save_confirmed(self, confirmed):
         if not confirmed:
@@ -737,19 +783,20 @@ class SetupApp(toga.App):
             self.cleanup_docker_state_safe()
 
             # Save config
-            self.save_config(
-                {
-                    "domain": self.domain_input.value,
-                    "username": self.firstname_input.value,
-                    "familyname": self.familyname_input.value,
-                    "password": self.password_input.value,
-                }
-            )
+            self.save_config(self.collect_config())
 
             # Refresh UI checks
             self.ui(self.start_checks)
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def collect_config(self):
+        return {
+            "domain": self.domain_input.value,
+            "username": self.firstname_input.value,
+            "familyname": self.familyname_input.value,
+            "password": self.password_input.value,
+        }
 
     def load_config(self):
         if not CONFIG_FILE.exists():
@@ -778,6 +825,38 @@ class SetupApp(toga.App):
         password = config.get("password", "test")
         email = f"{username}@{domain}"
         return username, domain, password, email
+
+    def domain_changed(self, new_domain):
+        old_domain = self.load_config().get("domain")
+        return old_domain and old_domain != new_domain
+
+    def release_domain(self, domain):
+        try:
+            r = requests.post(
+                API_BASE + "/domain/release",
+                json={"domain": domain},
+                timeout=10,
+            )
+            r.raise_for_status()
+            logging.info(f"Released domain: {domain}")
+            return True
+        except Exception:
+            logging.exception(f"Failed to release domain: {domain}")
+            return False
+
+    def reserve_domain(self, domain):
+        try:
+            r = requests.post(
+                API_BASE + "/domain/reserve",
+                json={"domain": domain},
+                timeout=10,
+            )
+            r.raise_for_status()
+            logging.info(f"Reserved domain: {domain}")
+            return True
+        except Exception:
+            logging.exception(f"Failed to reserve domain: {domain}")
+            return False
 
     def open_thunderbird(self, widget):
         try:
