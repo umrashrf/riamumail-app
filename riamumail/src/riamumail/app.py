@@ -723,22 +723,6 @@ class SetupApp(toga.App):
             threading.Thread(target=worker, daemon=True).start()
             return
 
-        else:  # ---------- SUBSEQUENT RUNS ----------
-            if self.docker_container_exists():
-                self.main_window.confirm_dialog(
-                    title="Confirm changes",
-                    message=(
-                        "Are you sure? "
-                        "Your mail server is currently running and "
-                        "saving new config will delete it and "
-                        "you will lose all your emails \n\n"
-                        "Do you want to continue?"
-                    ),
-                    on_result=self.on_save_confirmed,
-                )
-            else:
-                self.save_config(self.collect_config())
-
         # ---------- DOMAIN CHANGE ----------
         if self.domain_changed(new_domain):
             self.main_window.confirm_dialog(
@@ -749,11 +733,31 @@ class SetupApp(toga.App):
                     "• In some cases it can take 24 hours or more\n\n"
                     "Do you want to continue?"
                 ),
-                on_result=lambda confirmed: self.on_domain_change_confirmed(
+                on_result=lambda window, confirmed: self.on_domain_change_confirmed(
                     confirmed, new_domain
                 ),
             )
             return
+
+        if not self.is_first_run():  # ---------- SUBSEQUENT RUNS ----------
+            if (
+                self.docker_container_exists()
+                or self.docker_container_running()
+                or self.docker_image_exists()
+            ):
+                self.main_window.confirm_dialog(
+                    title="Confirm changes",
+                    message=(
+                        "Are you sure? "
+                        "Your have an active mail server and "
+                        "saving new config will delete it and "
+                        "you will lose all your emails \n\n"
+                        "Do you want to continue?"
+                    ),
+                    on_result=self.on_save_confirmed,
+                )
+            else:
+                self.save_config(self.collect_config())
 
     def on_domain_change_confirmed(self, confirmed, new_domain):
         if not confirmed:
@@ -773,7 +777,7 @@ class SetupApp(toga.App):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def on_save_confirmed(self, confirmed):
+    def on_save_confirmed(self, window, confirmed):
         if not confirmed:
             logging.info("User cancelled save")
             return  # 🚫 Do nothing
@@ -848,7 +852,7 @@ class SetupApp(toga.App):
         try:
             r = requests.post(
                 API_BASE + "/domain/reserve",
-                json={"domain": domain},
+                json={"domain": domain, "ipAddress": self.ip},
                 timeout=10,
             )
             r.raise_for_status()
