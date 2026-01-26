@@ -350,7 +350,7 @@ class SetupApp(toga.App):
             )
             r.raise_for_status()
             data = r.json()
-            return bool(data.get("available"))
+            return data.get("available")
         except Exception:
             logging.exception("Domain availability check failed")
             return -1
