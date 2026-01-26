@@ -332,6 +332,7 @@ class SetupApp(toga.App):
         config = self.load_config()
         self.domain_input.value = config.get("domain", "family_name.riamumail.com")
         self.firstname_input.value = config.get("username", "")
+        self.familyname_input.value = config.get("familyname", "")
         self.password_input.value = config.get("password", "")
         self.update_email(None)
         self.start_checks()
@@ -708,6 +709,7 @@ class SetupApp(toga.App):
             {
                 "domain": self.domain_input.value,
                 "username": self.firstname_input.value,
+                "familyname": self.familyname_input.value,
                 "password": self.password_input.value,
             }
         )
