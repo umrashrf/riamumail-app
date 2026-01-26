@@ -248,7 +248,7 @@ class SetupApp(toga.App):
         self.familyname_input = toga.TextInput(
             placeholder="Family Name", style=Pack(padding=5)
         )
-        self.password_input = toga.PasswordInput(
+        self.password_input = toga.TextInput(
             placeholder="password", style=Pack(padding=5)
         )
 
