@@ -724,7 +724,7 @@ class SetupApp(toga.App):
             return
 
         else:  # ---------- SUBSEQUENT RUNS ----------
-            if self.docker_container_running():
+            if self.docker_container_exists():
                 self.main_window.confirm_dialog(
                     title="Confirm changes",
                     message=(
