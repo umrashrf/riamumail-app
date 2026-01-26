@@ -325,18 +325,19 @@ class SetupApp(toga.App):
             style=Pack(direction=COLUMN, padding=5, alignment="center"),
         )
 
+        self.main_window.content = main_box
+
+        config = self.load_config()
+        self.firstname_input.value = config.get("username", "")
+        self.familyname_input.value = config.get("familyname", "")
+        self.password_input.value = config.get("password", "")
+        self.domain_input.value = config.get("domain", "family_name.riamumail.com")
+        self.update_email(None)
+        
         self.domain_input.on_change = self.on_domain_change
         self.firstname_input.on_change = self.update_email
         self.familyname_input.on_change = self.update_email
 
-        self.main_window.content = main_box
-
-        config = self.load_config()
-        self.domain_input.value = config.get("domain", "family_name.riamumail.com")
-        self.firstname_input.value = config.get("username", "")
-        self.familyname_input.value = config.get("familyname", "")
-        self.password_input.value = config.get("password", "")
-        self.update_email(None)
         self.start_checks()
 
     # ------------------ BACKGROUND CHECKS ------------------
