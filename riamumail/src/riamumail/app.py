@@ -532,14 +532,15 @@ class SetupApp(toga.App):
             if system == "win32":
                 url = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
                 installer = self.download_file(url)
-                subprocess.Popen([installer, "install", "--quiet", "--accept-license"])
+                subprocess.Popen([installer, "install", "--quiet", "--accept-license"], env=self.SUBPROCESS_ENV)
 
             elif system == "darwin":
                 url = "https://desktop.docker.com/mac/main/arm64/Docker.dmg"
                 dmg = self.download_file(url)
-                subprocess.Popen(["hdiutil", "attach", dmg])
+                subprocess.Popen(["hdiutil", "attach", dmg], env=self.SUBPROCESS_ENV)
                 subprocess.Popen(
-                    ["cp", "-R", "/Volumes/Docker/Docker.app", "/Applications"]
+                    ["cp", "-R", "/Volumes/Docker/Docker.app", "/Applications"],
+                    env=self.SUBPROCESS_ENV
                 )
 
             else:
@@ -557,17 +558,18 @@ class SetupApp(toga.App):
             url = "https://download.mozilla.org/?product=thunderbird-latest&os=win64&lang=en-US"
             installer = self.download_file(url)
 
-            subprocess.Popen([installer, "/S"])
+            subprocess.Popen([installer, "/S"], env=self.SUBPROCESS_ENV)
         elif system == "darwin":
             url = "https://download.mozilla.org/?product=thunderbird-latest&os=osx&lang=en-US"
             dmg = self.download_file(url)
 
-            subprocess.Popen(["hdiutil", "attach", dmg])
+            subprocess.Popen(["hdiutil", "attach", dmg], env=self.SUBPROCESS_ENV)
             subprocess.Popen(
-                ["cp", "-R", "/Volumes/Thunderbird/Thunderbird.app", "/Applications"]
+                ["cp", "-R", "/Volumes/Thunderbird/Thunderbird.app", "/Applications"],
+                env=self.SUBPROCESS_ENV
             )
         else:
-            subprocess.Popen(["sh", "-c", "sudo apt install -y thunderbird"])
+            subprocess.Popen(["sh", "-c", "sudo apt install -y thunderbird"], env=self.SUBPROCESS_ENV)
 
     def download_file(self, url):
         logging.info(f"Downloading: {url}")
@@ -735,7 +737,7 @@ class SetupApp(toga.App):
         process = subprocess.Popen(
             cmd,
             cwd=cwd,
-            env=SUBPROCESS_ENV,
+            env=self.SUBPROCESS_ENV,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -944,7 +946,7 @@ class SetupApp(toga.App):
 
     def open_thunderbird(self, widget):
         try:
-            subprocess.Popen(["open", "/Applications/Thunderbird.app"])  # MacOS
+            subprocess.Popen(["open", "/Applications/Thunderbird.app"], env=self.SUBPROCESS_ENV)  # MacOS
         except Exception:
             logging.exception("Failed to open Thunderbird")
 
@@ -952,7 +954,7 @@ class SetupApp(toga.App):
 
     def git_exists(self):
         try:
-            subprocess.check_output(["git", "--version"])
+            subprocess.check_output(["git", "--version"], env=self.SUBPROCESS_ENV)
             return True
         except Exception:
             return False
@@ -976,6 +978,7 @@ class SetupApp(toga.App):
             subprocess.check_output(
                 ["docker", "image", "inspect", DOCKER_IMAGE],
                 stderr=subprocess.DEVNULL,
+                env=self.SUBPROCESS_ENV
             )
             return True
         except subprocess.CalledProcessError:
@@ -992,7 +995,8 @@ class SetupApp(toga.App):
                     f"name={DOCKER_CONTAINER}",
                     "--format",
                     "{{.Names}}",
-                ]
+                ],
+                env=self.SUBPROCESS_ENV
             ).decode()
             return DOCKER_CONTAINER in output
         except Exception:
@@ -1008,7 +1012,8 @@ class SetupApp(toga.App):
                     f"name={DOCKER_CONTAINER}",
                     "--format",
                     "{{.Names}}",
-                ]
+                ],
+                env=self.SUBPROCESS_ENV
             ).decode()
             return DOCKER_CONTAINER in output
         except Exception:
@@ -1179,6 +1184,7 @@ CMD ["-F"]
             ["docker", "rmi", "-f", DOCKER_IMAGE],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=self.SUBPROCESS_ENV
         )
 
     def cleanup_docker_state_safe(self):
