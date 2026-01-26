@@ -700,19 +700,29 @@ class SetupApp(toga.App):
 
     def on_domain_change(self, widget):
         self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
-        
+
         self.trigger_domain_check()
         self.start_checks()
 
     def save_data(self, widget):
-        self.save_config(
-            {
-                "domain": self.domain_input.value,
-                "username": self.firstname_input.value,
-                "familyname": self.familyname_input.value,
-                "password": self.password_input.value,
-            }
-        )
+        def worker():
+            # 1. Stop container & remove image
+            self.cleanup_docker_state_safe()
+
+            # 2. Save config
+            self.save_config(
+                {
+                    "domain": self.domain_input.value,
+                    "username": self.firstname_input.value,
+                    "familyname": self.familyname_input.value,
+                    "password": self.password_input.value,
+                }
+            )
+
+            # 3. Refresh UI checks
+            self.ui(self.start_checks)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def load_config(self):
         if not CONFIG_FILE.exists():
@@ -777,6 +787,23 @@ class SetupApp(toga.App):
             )
             return True
         except subprocess.CalledProcessError:
+            return False
+
+    def docker_container_exists(self):
+        try:
+            output = subprocess.check_output(
+                [
+                    "/usr/local/bin/docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    f"name={DOCKER_CONTAINER}",
+                    "--format",
+                    "{{.Names}}",
+                ]
+            ).decode()
+            return DOCKER_CONTAINER in output
+        except Exception:
             return False
 
     def docker_container_running(self):
@@ -953,6 +980,28 @@ CMD ["-F"]
         finally:
             # Instead of calling start_checks() directly, marshal to main thread
             self.ui(self.start_checks)
+
+    def remove_docker_image(self):
+        logging.info("Removing Docker image if it exists")
+        subprocess.call(
+            ["/usr/local/bin/docker", "rmi", "-f", DOCKER_IMAGE],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    def cleanup_docker_state_safe(self):
+        try:
+            # Stop & remove container if it exists
+            if self.docker_container_exists():
+                logging.info("Stopping existing mail container")
+                self.stop_container()
+
+            # Remove image if it exists
+            if self.docker_image_exists():
+                self.remove_docker_image()
+
+        except Exception:
+            logging.exception("Docker cleanup failed")
 
 
 def main():
