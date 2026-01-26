@@ -812,6 +812,8 @@ class SetupApp(toga.App):
         # Read username, domain, password, email
         username, domain, password, email = self.get_user_config()
 
+        username = username.lower()
+
         # ------------------ Replace users file ------------------
         users_file = MAIL_EXP_PATH / "users"
         users_content = (
