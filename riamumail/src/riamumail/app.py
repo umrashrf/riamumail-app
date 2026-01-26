@@ -705,11 +705,19 @@ class SetupApp(toga.App):
         self.start_checks()
 
     def save_data(self, widget):
-        def worker():
-            # 1. Stop container & remove image
-            self.cleanup_docker_state_safe()
-
-            # 2. Save config
+        if self.docker_container_running():
+            self.main_window.confirm_dialog(
+                title="Confirm changes",
+                message=(
+                    "Are you sure? "
+                    "Your mail server is currently running and "
+                    "saving new config will delete it and "
+                    "you will lose all your emails \n\n"
+                    "Do you want to continue?"
+                ),
+                on_result=self.on_save_confirmed,
+            )
+        else:
             self.save_config(
                 {
                     "domain": self.domain_input.value,
@@ -719,7 +727,26 @@ class SetupApp(toga.App):
                 }
             )
 
-            # 3. Refresh UI checks
+    def on_save_confirmed(self, confirmed):
+        if not confirmed:
+            logging.info("User cancelled save")
+            return  # 🚫 Do nothing
+
+        def worker():
+            # Stop container & remove image
+            self.cleanup_docker_state_safe()
+
+            # Save config
+            self.save_config(
+                {
+                    "domain": self.domain_input.value,
+                    "username": self.firstname_input.value,
+                    "familyname": self.familyname_input.value,
+                    "password": self.password_input.value,
+                }
+            )
+
+            # Refresh UI checks
             self.ui(self.start_checks)
 
         threading.Thread(target=worker, daemon=True).start()
