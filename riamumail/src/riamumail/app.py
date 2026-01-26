@@ -543,7 +543,7 @@ class SetupApp(toga.App):
                 )
 
             else:
-                subprocess.Popen(["sh", "-c", "curl -fsSL https://get.docker.com | sh"])
+                self.run_subprocess(["/bin/sh", "-c", "curl -fsSL https://get.docker.com | sh"])
 
         except Exception:
             logging.exception("Docker installation failed")
@@ -693,6 +693,46 @@ class SetupApp(toga.App):
 
         self.check_labels[label] = lbl
         self.checklist_box.add(lbl)
+    
+    def run_subprocess(self, cmd, *, cwd=None, check=False):
+        """
+        Run a subprocess and log stdout/stderr line by line.
+        """
+        logging.info("Running command: %s", " ".join(cmd))
+
+        process = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+
+        def log_stream(stream, level):
+            for line in iter(stream.readline, ""):
+                logging.log(level, line.rstrip())
+
+        stdout_thread = threading.Thread(
+            target=log_stream, args=(process.stdout, logging.INFO), daemon=True
+        )
+        stderr_thread = threading.Thread(
+            target=log_stream, args=(process.stderr, logging.ERROR), daemon=True
+        )
+
+        stdout_thread.start()
+        stderr_thread.start()
+
+        return_code = process.wait()
+        stdout_thread.join()
+        stderr_thread.join()
+
+        if check and return_code != 0:
+            raise subprocess.CalledProcessError(return_code, cmd)
+
+        logging.info("Command exited with code %s", return_code)
+        return return_code
+
 
     # ------------------ EVENTS ------------------
 
@@ -893,7 +933,7 @@ class SetupApp(toga.App):
 
         MAIL_EXP_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-        subprocess.check_call(["git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)])
+        self.run_subprocess(["/usr/bin/git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)])
 
     # ------------------ DOCKER HELPERS ------------------
 
@@ -1042,7 +1082,7 @@ CMD ["-F"]
                 "Building mail server image",
                 None,
             )
-            subprocess.check_call(
+            self.run_subprocess(
                 ["/usr/local/bin/docker", "build", "-t", DOCKER_IMAGE, "."],
                 cwd=MAIL_EXP_PATH,
             )
@@ -1056,7 +1096,7 @@ CMD ["-F"]
 
     def start_container(self):
         logging.info("Starting container")
-        subprocess.check_call(
+        self.run_subprocess(
             [
                 "/usr/local/bin/docker",
                 "run",
@@ -1077,7 +1117,7 @@ CMD ["-F"]
 
     def stop_container(self):
         logging.info("Stopping container")
-        subprocess.call(["/usr/local/bin/docker", "rm", "-f", DOCKER_CONTAINER])
+        self.run_subprocess(["/usr/local/bin/docker", "rm", "-f", DOCKER_CONTAINER])
 
     def toggle_container(self, widget):
         threading.Thread(target=self.toggle_container_safe, daemon=True).start()
