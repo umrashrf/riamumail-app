@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "Riamu Mail"
 bundle = "com.riamumail"
-version = "0.0.1"
+version = "0.0.2"
 url = "https://riamu.email"
 license.file = "LICENSE"
 author = "Umair Ashraf"
