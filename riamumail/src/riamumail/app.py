@@ -57,7 +57,7 @@ class SetupApp(toga.App):
         self.spinner_running = False
         self.spinning_labels = set()
 
-        self.main_window = toga.MainWindow(title=self.formal_name, size=(800, 600))
+        self.main_window = toga.MainWindow(title=self.formal_name, size=(800, 800))
 
         self.ip = ""
         self.domain_ok = False
@@ -325,7 +325,9 @@ class SetupApp(toga.App):
             style=Pack(direction=COLUMN, padding=5, alignment="center"),
         )
 
-        self.main_window.content = main_box
+        container = toga.ScrollContainer(content=main_box)
+
+        self.main_window.content = container
 
         config = self.load_config()
         self.firstname_input.value = config.get("username", "")
