@@ -510,6 +510,10 @@ class SetupApp(toga.App):
             logging.exception("Dependency installation crashed")
 
     def install_missing_apps(self):
+        if not self.git_exists():
+            self.ui(self.add_check, "Git", None)
+            self.install_git_quiet()
+
         if not self.app_exists("docker"):
             self.ui(self.add_check, "Docker Desktop", None)
             self.install_docker()
@@ -524,6 +528,51 @@ class SetupApp(toga.App):
 
         self.ui(self.update_ui, git_ok, docker_ok, thunderbird_ok, self.check_run_id)
 
+    def install_git_quiet(self):
+        try:
+            logging.info("Installing Git quietly")
+            system = sys.platform
+
+            # ---------- Windows ----------
+            if system == "win32":
+                url = "https://github.com/git-for-windows/git/releases/latest/download/Git-64-bit.exe"
+                installer = self.download_file(url)
+                subprocess.Popen(
+                    [
+                        installer,
+                        "/VERYSILENT",
+                        "/NORESTART",
+                        "/SUPPRESSMSGBOXES",
+                    ],
+                    env=self.SUBPROCESS_ENV,
+                )
+
+            # ---------- macOS ----------
+            elif system == "darwin":
+                # Uses Apple Command Line Tools (includes git)
+                subprocess.Popen(
+                    ["xcode-select", "--install"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=self.SUBPROCESS_ENV,
+                )
+
+            # ---------- Linux ----------
+            else:
+                subprocess.Popen(
+                    [
+                        "sh",
+                        "-c",
+                        "sudo apt-get update -qq && sudo apt-get install -y git",
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=self.SUBPROCESS_ENV,
+                )
+
+        except Exception:
+            logging.exception("Git installation failed")
+
     def install_docker(self):
         try:
             logging.info("Installing Docker")
@@ -532,7 +581,10 @@ class SetupApp(toga.App):
             if system == "win32":
                 url = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
                 installer = self.download_file(url)
-                subprocess.Popen([installer, "install", "--quiet", "--accept-license"], env=self.SUBPROCESS_ENV)
+                subprocess.Popen(
+                    [installer, "install", "--quiet", "--accept-license"],
+                    env=self.SUBPROCESS_ENV,
+                )
 
             elif system == "darwin":
                 url = "https://desktop.docker.com/mac/main/arm64/Docker.dmg"
@@ -540,7 +592,7 @@ class SetupApp(toga.App):
                 subprocess.Popen(["hdiutil", "attach", dmg], env=self.SUBPROCESS_ENV)
                 subprocess.Popen(
                     ["cp", "-R", "/Volumes/Docker/Docker.app", "/Applications"],
-                    env=self.SUBPROCESS_ENV
+                    env=self.SUBPROCESS_ENV,
                 )
 
             else:
@@ -566,10 +618,12 @@ class SetupApp(toga.App):
             subprocess.Popen(["hdiutil", "attach", dmg], env=self.SUBPROCESS_ENV)
             subprocess.Popen(
                 ["cp", "-R", "/Volumes/Thunderbird/Thunderbird.app", "/Applications"],
-                env=self.SUBPROCESS_ENV
+                env=self.SUBPROCESS_ENV,
             )
         else:
-            subprocess.Popen(["sh", "-c", "sudo apt install -y thunderbird"], env=self.SUBPROCESS_ENV)
+            subprocess.Popen(
+                ["sh", "-c", "sudo apt install -y thunderbird"], env=self.SUBPROCESS_ENV
+            )
 
     def download_file(self, url):
         logging.info(f"Downloading: {url}")
@@ -946,7 +1000,9 @@ class SetupApp(toga.App):
 
     def open_thunderbird(self, widget):
         try:
-            subprocess.Popen(["open", "/Applications/Thunderbird.app"], env=self.SUBPROCESS_ENV)  # MacOS
+            subprocess.Popen(
+                ["open", "/Applications/Thunderbird.app"], env=self.SUBPROCESS_ENV
+            )  # MacOS
         except Exception:
             logging.exception("Failed to open Thunderbird")
 
@@ -978,7 +1034,7 @@ class SetupApp(toga.App):
             subprocess.check_output(
                 ["docker", "image", "inspect", DOCKER_IMAGE],
                 stderr=subprocess.DEVNULL,
-                env=self.SUBPROCESS_ENV
+                env=self.SUBPROCESS_ENV,
             )
             return True
         except subprocess.CalledProcessError:
@@ -996,7 +1052,7 @@ class SetupApp(toga.App):
                     "--format",
                     "{{.Names}}",
                 ],
-                env=self.SUBPROCESS_ENV
+                env=self.SUBPROCESS_ENV,
             ).decode()
             return DOCKER_CONTAINER in output
         except Exception:
@@ -1013,7 +1069,7 @@ class SetupApp(toga.App):
                     "--format",
                     "{{.Names}}",
                 ],
-                env=self.SUBPROCESS_ENV
+                env=self.SUBPROCESS_ENV,
             ).decode()
             return DOCKER_CONTAINER in output
         except Exception:
@@ -1184,7 +1240,7 @@ CMD ["-F"]
             ["docker", "rmi", "-f", DOCKER_IMAGE],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            env=self.SUBPROCESS_ENV
+            env=self.SUBPROCESS_ENV,
         )
 
     def cleanup_docker_state_safe(self):
