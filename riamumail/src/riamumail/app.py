@@ -1094,6 +1094,33 @@ class SetupApp(toga.App):
 
         username = username.lower()
 
+        # ------------------ Update postfix main.cf ------------------
+        main_cf_path = MAIL_EXP_PATH / "postfix" / "main.cf"
+
+        myhostname = domain
+        mydomain = domain
+
+        if main_cf_path.exists():
+            lines = main_cf_path.read_text().splitlines()
+        else:
+            lines = []
+
+        def set_or_replace(key, value, lines):
+            for i, line in enumerate(lines):
+                if line.strip().startswith(f"{key}"):
+                    lines[i] = f"{key} = {value}"
+                    return
+            lines.append(f"{key} = {value}")
+
+        set_or_replace("myhostname", myhostname, lines)
+        set_or_replace("mydomain", mydomain, lines)
+
+        main_cf_path.write_text("\n".join(lines) + "\n")
+
+        logging.info(
+            f"Updated postfix main.cf (myhostname={myhostname}, mydomain={mydomain})"
+        )
+
         # ------------------ Replace users file ------------------
         users_file = MAIL_EXP_PATH / "users"
         users_content = (
