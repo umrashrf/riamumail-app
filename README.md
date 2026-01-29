@@ -5,3 +5,7 @@ This app lets your setup your self-hosted mail yourself for free or buy a pro pl
 Riamu Mail is part of a mail experiment. Checkout https://github.com/umrashrf/mailexp
 
 ![Screenshot](assets/img/Screenshot1.png)
+
+## Test
+
+Send an email to umair@ashraf.riamumail.com for testing. And, I, a real human will respond.
