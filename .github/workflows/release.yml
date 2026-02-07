@@ -41,6 +41,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install briefcase
 
+      - name: Verify project root
+        shell: bash
+        run: |
+          ls
+          test -f pyproject.toml
+
       - name: Build app
         shell: bash
         working-directory: riamumail
