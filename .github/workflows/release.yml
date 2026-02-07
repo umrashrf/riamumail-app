@@ -36,20 +36,16 @@ jobs:
             libgtk-3-dev \
             libwebkit2gtk-4.0-dev \
             libgirepository1.0-dev \
-            gir1.2-gtk-3.0
+            gir1.2-gtk-3.0 \
+            python3-pip \
+            patchelf \
+            build-essential \
+            git
 
       - name: Install Briefcase
         run: |
           python -m pip install --upgrade pip
           pip install briefcase
-      
-      - name: Install Briefcase (Linux system Python)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip
-          python3 -m pip install --upgrade pip
-          python3 -m pip install briefcase
 
       - name: Verify project root
         shell: bash
@@ -58,13 +54,17 @@ jobs:
           ls
           test -f pyproject.toml
 
-      - name: Build app
+      - name: Build app (Linux AppImage)
         shell: bash
         working-directory: ${{ github.workspace }}/riamumail
         run: |
-          briefcase create
-          briefcase build
-          briefcase package -v --adhoc-sign
+          # Clean any previous builds
+          briefcase clean --all
+
+          # Create and build the app for Linux AppImage
+          briefcase create linux
+          briefcase build linux
+          briefcase package linux --format AppImage -v
 
       - name: Collect artifacts
         shell: bash
@@ -75,8 +75,7 @@ jobs:
             -name "*.pkg" -o \
             -name "*.msi" -o \
             -name "*.exe" -o \
-            -name "*.AppImage" -o \
-            -name "*.deb" \
+            -name "*.AppImage" \
           \) -exec cp {} dist/ \;
 
       - name: Upload artifacts
