@@ -1,0 +1,85 @@
+name: Build & Release Toga App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            gir1.2-gtk-3.0
+
+      - name: Install Briefcase
+        run: |
+          python -m pip install --upgrade pip
+          pip install briefcase
+
+      - name: Build app
+        run: |
+          briefcase create
+          briefcase build
+          briefcase package
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          find . -type f \( \
+            -name "*.dmg" -o \
+            -name "*.pkg" -o \
+            -name "*.msi" -o \
+            -name "*.exe" -o \
+            -name "*.AppImage" -o \
+            -name "*.deb" \
+          \) -exec cp {} dist/ \;
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ runner.os }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          generate_release_notes: true
