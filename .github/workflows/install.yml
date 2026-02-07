@@ -14,7 +14,7 @@ jobs:
         include:
           - os: macos-latest
             ext: dmg
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             ext: deb
           - os: windows-latest
             ext: exe
@@ -36,7 +36,8 @@ jobs:
             });
 
             const asset = release.assets.find(a =>
-              a.name.endsWith('.${{ matrix.ext }}')
+              a.name.endsWith('.exe') &&
+              !a.name.toLowerCase().includes('normalizer')
             );
 
             if (!asset) {
@@ -57,10 +58,16 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           hdiutil attach "${{ steps.release.outputs.name }}"
-          APP_PATH=$(find /Volumes -name "*.app" -maxdepth 2 | head -n 1)
+
+          VOLUME=$(ls /Volumes | grep "Riamu" | head -n 1)
+          APP_PATH=$(find "/Volumes/$VOLUME" -name "*.app" -maxdepth 2 | head -n 1)
+
+          echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" /Applications/
-          open "$APP_PATH"
-          sleep 10
+
+          open -a "$APP_PATH"
+          sleep 15
+
           screencapture -x screenshot-macos.png
 
       # -----------------------
@@ -77,15 +84,20 @@ jobs:
       # -----------------------
       # Windows install (.exe)
       # -----------------------
-      - name: Install on Windows
+      - name: Run app on Windows
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
-          Start-Process -FilePath "${{ steps.release.outputs.name }}" -ArgumentList "/S" -Wait
+          Start-Process -FilePath "${{ steps.release.outputs.name }}"
+          Start-Sleep -Seconds 15
+
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
-          $bmp = New-Object System.Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,
-                                                  [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
+
+          $bmp = New-Object System.Drawing.Bitmap(
+            [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,
+            [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height
+          )
           $graphics = [System.Drawing.Graphics]::FromImage($bmp)
           $graphics.CopyFromScreen(0,0,0,0,$bmp.Size)
           $bmp.Save("screenshot-windows.png")
