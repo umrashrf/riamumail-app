@@ -1,0 +1,98 @@
+name: Install
+
+on:
+  workflow_run:
+    workflows: ["release"]
+    types:
+      - completed
+
+jobs:
+  install:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            ext: dmg
+          - os: ubuntu-latest
+            ext: deb
+          - os: windows-latest
+            ext: exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get latest release asset URL
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            const asset = release.assets.find(a =>
+              a.name.endsWith('.${{ matrix.ext }}')
+            );
+
+            if (!asset) {
+              core.setFailed("No asset found for extension: ${{ matrix.ext }}");
+            }
+
+            core.setOutput("url", asset.browser_download_url);
+            core.setOutput("name", asset.name);
+
+      - name: Download release asset
+        run: |
+          curl -L "${{ steps.release.outputs.url }}" -o "${{ steps.release.outputs.name }}"
+
+      # -----------------------
+      # macOS install (.dmg)
+      # -----------------------
+      - name: Install on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          hdiutil attach "${{ steps.release.outputs.name }}"
+          APP_PATH=$(find /Volumes -name "*.app" -maxdepth 2 | head -n 1)
+          cp -R "$APP_PATH" /Applications/
+          open "$APP_PATH"
+          sleep 10
+          screencapture -x screenshot-macos.png
+
+      # -----------------------
+      # Linux install (.deb)
+      # -----------------------
+      - name: Install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ./$(echo "${{ steps.release.outputs.name }}")
+          sudo apt-get install -y scrot
+          scrot screenshot-linux.png
+
+      # -----------------------
+      # Windows install (.exe)
+      # -----------------------
+      - name: Install on Windows
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          Start-Process -FilePath "${{ steps.release.outputs.name }}" -ArgumentList "/S" -Wait
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          $bmp = New-Object System.Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,
+                                                  [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
+          $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+          $graphics.CopyFromScreen(0,0,0,0,$bmp.Size)
+          $bmp.Save("screenshot-windows.png")
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-${{ matrix.os }}
+          path: |
+            screenshot-*.png
