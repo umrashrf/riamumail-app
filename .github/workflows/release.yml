@@ -49,7 +49,7 @@ jobs:
 
       - name: Build app
         shell: bash
-        working-directory: riamumail
+        working-directory: ${{ github.workspace }}/riamumail
         run: |
           briefcase create
           briefcase build
