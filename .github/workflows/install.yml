@@ -35,10 +35,19 @@ jobs:
               repo: context.repo.repo
             });
 
-            const asset = release.assets.find(a =>
-              a.name.endsWith('.exe') &&
-              !a.name.toLowerCase().includes('normalizer')
-            );
+            let asset;
+
+            if ("${{ matrix.ext }}" === "exe") {
+              // pick main exe, ignore helper tools like normalizer.exe
+              asset = release.assets.find(a =>
+                a.name.toLowerCase().endsWith(".exe") &&
+                !a.name.toLowerCase().includes("normalizer")
+              );
+            } else {
+              asset = release.assets.find(a =>
+                a.name.toLowerCase().endsWith(".${{ matrix.ext }}")
+              );
+            }
 
             if (!asset) {
               core.setFailed("No asset found for extension: ${{ matrix.ext }}");
@@ -47,9 +56,22 @@ jobs:
             core.setOutput("url", asset.browser_download_url);
             core.setOutput("name", asset.name);
 
-      - name: Download release asset
+      - name: Show downloaded file
+        run: |
+          ls -lh
+
+      - name: Download release asset (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           curl -L "${{ steps.release.outputs.url }}" -o "${{ steps.release.outputs.name }}"
+
+      - name: Download release asset (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Invoke-WebRequest `
+            -Uri "${{ steps.release.outputs.url }}" `
+            -OutFile "${{ steps.release.outputs.name }}"
 
       # -----------------------
       # macOS install (.dmg)
@@ -78,8 +100,20 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ./$(echo "${{ steps.release.outputs.name }}")
-          sudo apt-get install -y scrot
-          scrot screenshot-linux.png
+          sudo apt-get install -y scrot xvfb
+
+          # Try to find installed app
+          APP=$(ls /usr/bin | grep -i riamu | head -n 1)
+          echo "App: $APP"
+
+          # Launch inside virtual display and screenshot
+          xvfb-run -a bash -c "
+            $APP &
+            sleep 10
+            scrot screenshot-linux.png
+          "
+
+          ls -la
 
       # -----------------------
       # Windows install (.exe)
