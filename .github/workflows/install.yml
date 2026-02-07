@@ -56,7 +56,14 @@ jobs:
             core.setOutput("url", asset.browser_download_url);
             core.setOutput("name", asset.name);
 
-      - name: Show downloaded file
+      - name: Show downloaded file (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Get-ChildItem
+
+      - name: Show downloaded file (Unix)
+        if: runner.os != 'Windows'
         run: |
           ls -lh
 
@@ -87,28 +94,25 @@ jobs:
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" /Applications/
 
-          open -a "$APP_PATH"
-          sleep 15
+          # Launch the actual executable inside the .app
+          EXEC=$(find "/Applications" -name "Riamu Mail.app" -maxdepth 2 | head -n 1)/Contents/MacOS/*
+          echo "Launching: $EXEC"
+          "$EXEC" &
 
+          sleep 15
           screencapture -x screenshot-macos.png
 
       # -----------------------
       # Linux install (.deb)
       # -----------------------
       - name: Install on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y ./$(echo "${{ steps.release.outputs.name }}")
           sudo apt-get install -y scrot xvfb
 
-          # Try to find installed app
-          APP=$(ls /usr/bin | grep -i riamu | head -n 1)
-          echo "App: $APP"
-
-          # Launch inside virtual display and screenshot
           xvfb-run -a bash -c "
-            $APP &
             sleep 10
             scrot screenshot-linux.png
           "
