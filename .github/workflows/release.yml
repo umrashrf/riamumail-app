@@ -64,7 +64,7 @@ jobs:
         run: |
           briefcase create
           briefcase build
-          briefcase package -v
+          briefcase package -v --adhoc-sign
 
       - name: Collect artifacts
         shell: bash
