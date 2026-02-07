@@ -43,6 +43,7 @@ jobs:
 
       - name: Verify project root
         shell: bash
+        working-directory: ${{ github.workspace }}/riamumail
         run: |
           ls
           test -f pyproject.toml
