@@ -106,11 +106,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flatpak scrot xvfb
 
-          # Install the downloaded Flatpak bundle
+          # Install the bundle
           flatpak install --user --noninteractive ./${{ steps.release.outputs.name }}
 
-          # Extract the Flatpak app ID from the bundle
-          APP_ID=$(flatpak info --show-name ./${{ steps.release.outputs.name }} 2>/dev/null || echo "")
+          # List installed apps in the user environment
+          APP_ID=$(flatpak list --user --app --columns=application | grep riamumail || true)
 
           if [ -z "$APP_ID" ]; then
             echo "Failed to get Flatpak app ID"
