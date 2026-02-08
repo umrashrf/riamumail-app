@@ -40,7 +40,7 @@ jobs:
             if ("${{ matrix.ext }}" === "exe") {
               asset = release.assets.find(a =>
                 a.name.toLowerCase().endsWith(".exe") &&
-                !a.name.toLowerCase().includes("normalizer")
+                a.name.toLowerCase() === "riamu.mail.exe"
               );
             } else if ("${{ matrix.ext }}" === "flatpak") {
               asset = release.assets.find(a =>
