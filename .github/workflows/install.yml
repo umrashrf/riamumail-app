@@ -96,15 +96,15 @@ jobs:
           Write-Host "Installing $msi in quiet mode..."
           Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn" -Wait
 
-          Write-Host "Listing Start Menu shortcuts..."
+          Write-Host "Listing per-user Start Menu shortcuts..."
           Get-ChildItem `
-            "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" `
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" `
             -Recurse -Filter "*.lnk" |
             Select-Object FullName
 
-          # Try to find the shortcut
+          # Find the shortcut
           $shortcut = Get-ChildItem `
-            "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" `
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" `
             -Recurse -Filter "*.lnk" |
             Where-Object { $_.Name -like "*Riamu*" } |
             Select-Object -First 1
