@@ -144,7 +144,6 @@ system_requires = [
     "cairo-gobject-devel",
     # Needed to compile PyGObject wheel
     "gobject-introspection-devel",
-    "libgirepository1.0-dev",
     # Needed to provide GTK
     "gtk3-devel",
     # Dependencies that GTK looks for at runtime, that need to be
