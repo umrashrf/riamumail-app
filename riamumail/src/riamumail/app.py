@@ -830,9 +830,8 @@ class SetupApp(toga.App):
             match = re.search(r"[^.]+\.[^.]+$", domain)
             if match:
                 domain = match.group(0)
-            self.domain_input.value = (
-                f"{(self.familyname_input.value or "family_name").lower()}.{domain}"
-            )
+            family_name = self.familyname_input.value or "family_name"
+            self.domain_input.value = f"{family_name.lower()}.{domain}"
 
         self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
 
