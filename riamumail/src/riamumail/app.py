@@ -123,7 +123,7 @@ class SetupApp(toga.App):
                     "• Port forwarding\n"
                     "• Custom domain\n"
                     "• Free subdomain\n"
-                    "• No backup",
+                    "• You backup",
                     style=text_style,
                 ),
                 toga.Button(
