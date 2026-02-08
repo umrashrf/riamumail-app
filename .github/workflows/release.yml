@@ -58,8 +58,8 @@ jobs:
         shell: bash
         working-directory: ${{ github.workspace }}/riamumail
         run: |
-          # Clean any previous builds (ubuntu-22.04 only)
-          if [ "$RUNNER_OS" = "ubuntu-22.04" ]; then
+          # Clean any previous builds (Linux only)
+          if [ "$RUNNER_OS" = "Linux" ]; then
             python3 -m briefcase clean --all
             python3 -m briefcase create linux
             python3 -m briefcase build linux
