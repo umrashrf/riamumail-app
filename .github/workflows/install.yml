@@ -17,7 +17,7 @@ jobs:
           - os: ubuntu-22.04
             ext: flatpak
           - os: windows-latest
-            ext: exe
+            ext: msi
 
     runs-on: ${{ matrix.os }}
 
@@ -37,10 +37,9 @@ jobs:
 
             let asset;
 
-            if ("${{ matrix.ext }}" === "exe") {
+            if ("${{ matrix.ext }}" === "msi") {
               asset = release.assets.find(a =>
-                a.name.toLowerCase().endsWith(".exe") &&
-                a.name.toLowerCase() === "riamu.mail.exe"
+                a.name.toLowerCase().endsWith(".msi")
               );
             } else if ("${{ matrix.ext }}" === "flatpak") {
               asset = release.assets.find(a =>
@@ -75,51 +74,45 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $exeAssets = @()
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest" -Headers @{ "Accept" = "application/vnd.github+json" }
-          
-          foreach ($asset in $release.assets) {
-            if ($asset.name.ToLower().EndsWith(".exe")) {
-              $exeAssets += $asset
-            }
-          }
-
-          if ($exeAssets.Count -eq 0) {
-            Write-Error "No .exe assets found in the latest release"
-            exit 1
-          }
-
-          # Create a folder to hold the downloaded .exe files
-          New-Item -ItemType Directory -Path app -Force | Out-Null
-
-          # Download each .exe
-          foreach ($asset in $exeAssets) {
-            $outFile = Join-Path app $asset.name
-            Write-Host "Downloading $($asset.name) to $outFile"
-            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $outFile
-          }
-
-          # List the downloaded files
-          Get-ChildItem app
+          Invoke-WebRequest `
+            -Uri "${{ steps.release.outputs.url }}" `
+            -OutFile "${{ steps.release.outputs.name }}"
+          Get-ChildItem
 
       # -----------------------
-      # Run app on Windows
+      # Windows: install MSI and run app
       # -----------------------
-      - name: Run app on Windows
+      - name: Install and run app on Windows
         if: matrix.os == 'windows-latest'
         shell: powershell
         run: |
-          # Run the main executable from the app folder
-          $exePath = "app\Riamu.Mail.exe"
-          if (-Not (Test-Path $exePath)) {
-            Write-Error "Riamu.Mail.exe not found in app folder"
+          $msi = "${{ steps.release.outputs.name }}"
+
+          if (-Not (Test-Path $msi)) {
+            Write-Error "MSI not found: $msi"
             exit 1
           }
 
-          Start-Process -FilePath $exePath
+          Write-Host "Installing $msi in quiet mode..."
+          Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn" -Wait
+
+          # Try to find the installed executable
+          $appPath = "C:\Program Files\Riamu Mail\Riamu.Mail.exe"
+          if (-Not (Test-Path $appPath)) {
+            Write-Host "Default path not found, searching..."
+            $appPath = Get-ChildItem "C:\Program Files" -Recurse -Filter "Riamu.Mail.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+
+          if (-Not $appPath) {
+            Write-Error "Installed executable not found"
+            exit 1
+          }
+
+          Write-Host "Launching: $appPath"
+          Start-Process -FilePath $appPath
           Start-Sleep -Seconds 15
 
-          # Take a screenshot
+          # Take screenshot
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
 
