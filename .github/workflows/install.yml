@@ -137,17 +137,24 @@ jobs:
       - name: Install on macOS
         if: matrix.os == 'macos-latest'
         run: |
+          # Mount the dmg
           hdiutil attach "${{ steps.release.outputs.name }}"
 
-          APP_PATH=$(find /Volumes -name "*.app" -maxdepth 3 | head -n 1)
+          # Find the .app inside the mounted volume
+          APP_PATH=$(find /Volumes -type d -name "*.app" | head -n 1)
           echo "Found app at: $APP_PATH"
 
+          # Copy app to /Applications
           cp -R "$APP_PATH" /Applications/
 
-          EXEC=$(find /Applications -name "*.app" -maxdepth 2 | head -n 1)/Contents/MacOS/*
-          echo "Launching: $EXEC"
+          # Find the actual executable inside the .app bundle
+          EXEC=$(find "/Applications/$(basename "$APP_PATH")/Contents/MacOS" -type f | head -n 1)
+          echo "Launching executable: $EXEC"
+
+          # Launch the app
           "$EXEC" &
 
+          # Wait a bit and take a screenshot
           sleep 15
           screencapture -x screenshot-macos.png
 
