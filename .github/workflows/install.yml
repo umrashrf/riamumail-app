@@ -15,7 +15,7 @@ jobs:
           - os: macos-latest
             ext: dmg
           - os: ubuntu-22.04
-            ext: appimage
+            ext: flatpak
           - os: windows-latest
             ext: exe
 
@@ -42,9 +42,9 @@ jobs:
                 a.name.toLowerCase().endsWith(".exe") &&
                 !a.name.toLowerCase().includes("normalizer")
               );
-            } else if ("${{ matrix.ext }}" === "appimage") {
+            } else if ("${{ matrix.ext }}" === "flatpak") {
               asset = release.assets.find(a =>
-                a.name.toLowerCase().endsWith(".appimage")
+                a.name.toLowerCase().endsWith(".flatpak")
               );
             } else {
               asset = release.assets.find(a =>
@@ -98,18 +98,29 @@ jobs:
           screencapture -x screenshot-macos.png
 
       # -----------------------
-      # Linux: run AppImage
+      # Linux: run Flatpak
       # -----------------------
-      - name: Run on Ubuntu (AppImage)
+      - name: Run on Ubuntu (Flatpak)
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y scrot xvfb
+          sudo apt-get install -y flatpak scrot xvfb
 
-          chmod +x "${{ steps.release.outputs.name }}"
+          # Install the downloaded Flatpak bundle
+          flatpak install --user --noninteractive ./${{ steps.release.outputs.name }}
+
+          # Extract the Flatpak app ID from the bundle
+          APP_ID=$(flatpak info --show-name ./${{ steps.release.outputs.name }} 2>/dev/null || echo "")
+
+          if [ -z "$APP_ID" ]; then
+            echo "Failed to get Flatpak app ID"
+            exit 1
+          fi
+
+          echo "Launching Flatpak app: $APP_ID"
 
           xvfb-run -a bash -c "
-            ./'${{ steps.release.outputs.name }}' &
+            flatpak run $APP_ID &
             sleep 15
             scrot screenshot-linux.png
           "
