@@ -6,7 +6,7 @@ version = "0.3.7"
 url = "https://riamu.email"
 license.file = "LICENSE"
 author = "Umair Ashraf"
-author_email = "umair@riamumail.com"
+author_email = "umair@ashraf.riamumail.com"
 
 [tool.briefcase.app.riamumail]
 formal_name = "Riamu Mail"
