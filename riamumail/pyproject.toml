@@ -144,6 +144,7 @@ system_requires = [
     "cairo-gobject-devel",
     # Needed to compile PyGObject wheel
     "gobject-introspection-devel",
+    "libgirepository1.0-dev",
     # Needed to provide GTK
     "gtk3-devel",
     # Dependencies that GTK looks for at runtime, that need to be
@@ -151,11 +152,6 @@ system_requires = [
     "libcanberra-gtk3",
     "PackageKit-gtk3-module",
     "gvfs-client",
-]
-
-system_runtime_requires = [
-    "gtk3",
-    "gobject-introspection",
 ]
 
 linuxdeploy_plugins = [
