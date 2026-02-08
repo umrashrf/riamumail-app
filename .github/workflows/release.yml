@@ -80,7 +80,7 @@ jobs:
             -name "*.pkg" -o \
             -name "*.msi" -o \
             -name "*.exe" -o \
-            -name "*.AppImage" -o \
+            -name "*.flatpak" -o \
             -name "*.deb" \
           \) -exec cp {} dist/ \;
 
