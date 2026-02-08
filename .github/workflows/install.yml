@@ -96,20 +96,21 @@ jobs:
           Write-Host "Installing $msi in quiet mode..."
           Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn" -Wait
 
-          # Try to find the installed executable
-          $appPath = "C:\Program Files\Riamu Mail\Riamu.Mail.exe"
-          if (-Not (Test-Path $appPath)) {
-            Write-Host "Default path not found, searching..."
-            $appPath = Get-ChildItem "C:\Program Files" -Recurse -Filter "Riamu.Mail.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-          }
+          # Look for Start Menu shortcut
+          $shortcut = Get-ChildItem `
+            "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" `
+            -Recurse -Filter "*.lnk" |
+            Where-Object { $_.Name -like "*Riamu*" } |
+            Select-Object -First 1
 
-          if (-Not $appPath) {
-            Write-Error "Installed executable not found"
+          if (-Not $shortcut) {
+            Write-Error "Start Menu shortcut not found"
             exit 1
           }
 
-          Write-Host "Launching: $appPath"
-          Start-Process -FilePath $appPath
+          Write-Host "Launching via shortcut: $($shortcut.FullName)"
+          Start-Process $shortcut.FullName
+
           Start-Sleep -Seconds 15
 
           # Take screenshot
