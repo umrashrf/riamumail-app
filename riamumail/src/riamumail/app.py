@@ -833,10 +833,12 @@ class SetupApp(toga.App):
             family_name = self.familyname_input.value or "family_name"
             self.domain_input.value = f"{family_name.lower()}.{domain}"
 
-        self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
+        first_name = self.firstname_input.value or "first_name"
+        self.email_display.value = f"{first_name.lower()}@{self.domain_input.value}"
 
     def on_domain_change(self, widget):
-        self.email_display.value = f"{(self.firstname_input.value or "first_name").lower()}@{self.domain_input.value}"
+        first_name = self.firstname_input.value or "first_name"
+        self.email_display.value = f"{first_name.lower()}@{self.domain_input.value}"
 
         self.trigger_domain_check()
         self.start_checks()
