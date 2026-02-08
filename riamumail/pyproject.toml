@@ -153,6 +153,11 @@ system_requires = [
     "gvfs-client",
 ]
 
+system_runtime_requires = [
+    "gtk3",
+    "gobject-introspection",
+]
+
 linuxdeploy_plugins = [
     "DEPLOY_GTK_VERSION=3 gtk",
 ]
