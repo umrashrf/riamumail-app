@@ -40,7 +40,9 @@ jobs:
             python3-pip \
             patchelf \
             build-essential \
-            git
+            git \
+            flatpak \
+            flatpak-builder
 
       - name: Install Briefcase
         run: |
