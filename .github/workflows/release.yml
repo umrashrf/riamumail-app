@@ -41,6 +41,8 @@ jobs:
             patchelf \
             build-essential \
             git
+          python3 -m pip install --upgrade pip
+          python3 -m pip install briefcase
 
       - name: Install Briefcase
         run: |
@@ -60,10 +62,10 @@ jobs:
         run: |
           # Clean any previous builds (ubuntu-22.04 only)
           if [ "$RUNNER_OS" = "ubuntu-22.04" ]; then
-            briefcase clean --all
-            briefcase create linux
-            briefcase build linux
-            briefcase package linux --format AppImage -v
+            python3 -m briefcase clean --all
+            python3 -m briefcase create linux
+            python3 -m briefcase build linux
+            python3 -m briefcase package linux --format AppImage -v
           else
             briefcase create
             briefcase build
