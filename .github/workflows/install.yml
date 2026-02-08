@@ -68,14 +68,68 @@ jobs:
           curl -L "${{ steps.release.outputs.url }}" -o "${{ steps.release.outputs.name }}"
           ls -lh
 
-      - name: Download release asset (Windows)
+      # -----------------------
+      # Download release asset (Windows) - all exe files
+      # -----------------------
+      - name: Download release assets (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          Invoke-WebRequest `
-            -Uri "${{ steps.release.outputs.url }}" `
-            -OutFile "${{ steps.release.outputs.name }}"
-          Get-ChildItem
+          $exeAssets = @()
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest" -Headers @{ "Accept" = "application/vnd.github+json" }
+          
+          foreach ($asset in $release.assets) {
+            if ($asset.name.ToLower().EndsWith(".exe")) {
+              $exeAssets += $asset
+            }
+          }
+
+          if ($exeAssets.Count -eq 0) {
+            Write-Error "No .exe assets found in the latest release"
+            exit 1
+          }
+
+          # Create a folder to hold the downloaded .exe files
+          New-Item -ItemType Directory -Path app -Force | Out-Null
+
+          # Download each .exe
+          foreach ($asset in $exeAssets) {
+            $outFile = Join-Path app $asset.name
+            Write-Host "Downloading $($asset.name) to $outFile"
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $outFile
+          }
+
+          # List the downloaded files
+          Get-ChildItem app
+
+      # -----------------------
+      # Run app on Windows
+      # -----------------------
+      - name: Run app on Windows
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          # Run the main executable from the app folder
+          $exePath = "app\Riamu.Mail.exe"
+          if (-Not (Test-Path $exePath)) {
+            Write-Error "Riamu.Mail.exe not found in app folder"
+            exit 1
+          }
+
+          Start-Process -FilePath $exePath
+          Start-Sleep -Seconds 15
+
+          # Take a screenshot
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+
+          $bmp = New-Object System.Drawing.Bitmap(
+            [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,
+            [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height
+          )
+          $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+          $graphics.CopyFromScreen(0,0,0,0,$bmp.Size)
+          $bmp.Save("screenshot-windows.png")
 
       # -----------------------
       # macOS: mount dmg and run app
@@ -124,27 +178,6 @@ jobs:
             sleep 15
             scrot screenshot-linux.png
           "
-
-      # -----------------------
-      # Windows: run exe directly
-      # -----------------------
-      - name: Run app on Windows
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          Start-Process -FilePath "${{ steps.release.outputs.name }}"
-          Start-Sleep -Seconds 15
-
-          Add-Type -AssemblyName System.Windows.Forms
-          Add-Type -AssemblyName System.Drawing
-
-          $bmp = New-Object System.Drawing.Bitmap(
-            [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,
-            [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height
-          )
-          $graphics = [System.Drawing.Graphics]::FromImage($bmp)
-          $graphics.CopyFromScreen(0,0,0,0,$bmp.Size)
-          $bmp.Save("screenshot-windows.png")
 
       - name: Upload screenshot
         uses: actions/upload-artifact@v4
