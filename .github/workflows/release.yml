@@ -61,8 +61,8 @@ jobs:
           # Clean any previous builds (Linux only)
           if [ "$RUNNER_OS" = "Linux" ]; then
             python3 -m briefcase create linux
-            python3 -m briefcase build linux appimage
-            python3 -m briefcase package linux appimage -v
+            python3 -m briefcase build linux flatpak
+            python3 -m briefcase package linux flatpak -v
           else
             briefcase create
             briefcase build
