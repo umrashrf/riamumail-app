@@ -96,7 +96,13 @@ jobs:
           Write-Host "Installing $msi in quiet mode..."
           Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn" -Wait
 
-          # Look for Start Menu shortcut
+          Write-Host "Listing Start Menu shortcuts..."
+          Get-ChildItem `
+            "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" `
+            -Recurse -Filter "*.lnk" |
+            Select-Object FullName
+
+          # Try to find the shortcut
           $shortcut = Get-ChildItem `
             "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" `
             -Recurse -Filter "*.lnk" |
