@@ -6,6 +6,10 @@ Riamu Mail is part of a mail experiment. Checkout https://github.com/umrashrf/ma
 
 ![Screenshot](assets/img/Screenshot1.png)
 
+## Troubleshoot
+
+Log file is located at ~/.riamumail/app.log on Linux and Mac and for Windows it should be at C:\Users\your_name\.riamumail/app.log
+
 ## Test
 
 Send an email to umair@ashraf.riamumail.com for testing. And, I, a real human will respond.
