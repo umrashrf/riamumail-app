@@ -8,7 +8,7 @@ Riamu Mail is part of a mail experiment. Checkout https://github.com/umrashrf/ma
 
 ## Troubleshoot
 
-Log file is located at ~/.riamumail/app.log on Linux and Mac and for Windows it should be at C:\Users\your_name\\.riamumail/app.log
+Log file is located at ~/.riamumail/app.log on Linux and Mac and for Windows it should be at C:\Users\your_name\\.riamumail\app.log
 
 ## Test
 
