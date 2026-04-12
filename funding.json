@@ -1,0 +1,78 @@
+{
+    "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+    "version": "v1.0.0",
+    "entity": {
+        "type": "individual",
+        "role": "maintainer",
+        "name": "Umair Ashraf",
+        "email": "umrprsnl@gmail.com",
+        "phone": "",
+        "description": "I'm a developer interested in preserving digital freedoms and the decentralised and open nature of the internet. I like breaking down barriers in the cyberspace with FOSS technologies.\n\nSometimes I can't shake the feeling that the system we're living in isn't quite what it seems. That there is no spoon.",
+        "webpageUrl": {
+            "url": "https://github.com/umrashrf",
+            "wellKnown": ""
+        }
+    },
+    "projects": [
+        {
+            "guid": "riamumail-app",
+            "name": "Riamu Mail App",
+            "description": "The Riamu Mail App is a distributed email application that solves many problems and makes distributed email possible. Email was meant to be distributed and free.",
+            "webpageUrl": {
+                "url": "https://github.com/umrashrf/riamumail-app"
+            },
+            "repositoryUrl": {
+                "url": "https://github.com/umrashrf/riamumail-app",
+                "wellKnown": ""
+            },
+            "licenses": [
+                "spdx:MIT"
+            ],
+            "tags": [
+                "email",
+                "distributed",
+                "communication",
+                "online",
+                "freedom",
+                "iff"
+            ]
+        }
+    ],
+    "funding": {
+        "channels": [
+            {
+                "guid": "buymeacoffee",
+                "type": "payment-provider",
+                "address": "https://buymeacoffee.com/umrashrf",
+                "description": "Please use my buymeacoffee link for now, in future I may consider other ways to fund me"
+            }
+        ],
+        "plans": [
+            {
+                "guid": "monthly",
+                "status": "active",
+                "name": "Full-time work on the project for research, development, testing, maintenance and upkeep",
+                "description": "This will cover the research, development, testing, maintenance and upkeep for a whole month. Pay what you can. The amount is an ideal goal for a month.",
+                "amount": 2500,
+                "currency": "CAD",
+                "frequency": "monthly",
+                "channels": [
+                    "buymeacoffee"
+                ]
+            },
+            {
+                "guid": "angel-plan",
+                "status": "active",
+                "name": "Research and Development for Android Phones with LTE/5G etc",
+                "description": "Getting the mail server to work on Android phone over mobile networks (LTE/5G) will truly be a game changer technology. This will enable anyone to use their phone as a mail server and truly be distributed. Pay what you can. The amount is an ideal goal for this project.",
+                "amount": 1000,
+                "currency": "CAD",
+                "frequency": "one-time",
+                "channels": [
+                    "buymeacoffee"
+                ]
+            }
+        ],
+        "history": []
+    }
+}
