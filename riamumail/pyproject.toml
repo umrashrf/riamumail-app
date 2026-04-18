@@ -2,8 +2,8 @@
 [tool.briefcase]
 project_name = "Riamu Mail"
 bundle = "com.riamumail"
-version = "0.4.9"
-url = "https://riamu.email"
+version = "0.5.0"
+url = "https://email.riamu.io"
 license.file = "LICENSE"
 author = "Umair Ashraf"
 author_email = "umair@ashraf.riamumail.com"
