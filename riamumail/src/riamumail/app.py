@@ -27,7 +27,7 @@ DOCKER_IMAGE = "mailexp:latest"
 DOCKER_CONTAINER = "mailexp"
 
 API_BASE = "https://email.riamu.io/api"
-//API_BASE = "http://localhost:8081/api"
+#API_BASE = "http://localhost:8081/api"
 
 
 def setup_logging():
