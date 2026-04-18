@@ -436,7 +436,7 @@ class SetupApp(toga.App):
             domain = self.domain_input.value
             port = int(self.port_input.value)
 
-            self.domain_ok = self.check_domain(domain)
+            self.domain_ok = self.is_domain_mapped_to_ip(domain)
             self.port_ok = self.check_port(port)
 
             git_ok = self.git_exists()
@@ -660,7 +660,7 @@ class SetupApp(toga.App):
             logging.exception("Failed to fetch public IP")
             return "Unknown"
 
-    def check_domain(self, domain):
+    def is_domain_mapped_to_ip(self, domain):
         if not domain:
             return False
         try:
@@ -883,6 +883,9 @@ class SetupApp(toga.App):
                 ),
             )
             return
+        elif not self.is_domain_mapped_to_ip(new_domain):
+            logging.info("Updating domain ip since it has changed")
+            self.update_domain(new_domain)
 
         if not self.is_first_run():  # ---------- SUBSEQUENT RUNS ----------
             if (
@@ -981,9 +984,18 @@ class SetupApp(toga.App):
 
     def release_domain(self, domain):
         try:
+            # Read username, domain, password, email
+            username, domain, password, email = self.get_user_config()
+            username = username.lower()
+
             r = requests.post(
                 API_BASE + "/domain/release",
-                json={"domain": domain},
+                json={
+                    "domain": domain,
+                    "email": email,
+                    "username": username,
+                    "password": passowrd,
+                },
                 timeout=10,
             )
             r.raise_for_status()
@@ -995,9 +1007,43 @@ class SetupApp(toga.App):
 
     def reserve_domain(self, domain):
         try:
+            # Read username, domain, password, email
+            username, domain, password, email = self.get_user_config()
+            username = username.lower()
+
             r = requests.post(
                 API_BASE + "/domain/reserve",
-                json={"domain": domain, "ipAddress": self.ip},
+                json={
+                    "domain": domain,
+                    "email": email,
+                    "username": username,
+                    "password": passowrd,
+                    "ipAddress": self.ip,
+                },
+                timeout=10,
+            )
+            r.raise_for_status()
+            logging.info(f"Reserved domain: {domain}")
+            return True
+        except Exception:
+            logging.exception(f"Failed to reserve domain: {domain}")
+            return False
+
+    def update_domain(self, domain):
+        try:
+            # Read username, domain, password, email
+            username, domain, password, email = self.get_user_config()
+            username = username.lower()
+
+            r = requests.post(
+                API_BASE + "/domain/update",
+                json={
+                    "domain": domain,
+                    "email": email,
+                    "username": username,
+                    "password": passowrd,
+                    "ipAddress": self.ip,
+                },
                 timeout=10,
             )
             r.raise_for_status()
