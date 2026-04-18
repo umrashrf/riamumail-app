@@ -26,7 +26,7 @@ MAIL_EXP_PATH = CONFIG_PATH / "mailexp"
 DOCKER_IMAGE = "mailexp:latest"
 DOCKER_CONTAINER = "mailexp"
 
-API_BASE = "https://riamu.email/api"
+API_BASE = "https://email.riamu.io/api"
 
 
 def setup_logging():
