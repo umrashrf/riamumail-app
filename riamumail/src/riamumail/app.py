@@ -676,7 +676,9 @@ class SetupApp(toga.App):
         if not domain:
             return False
         try:
-            return socket.gethostbyname(domain) == self.ip
+            domain_ip = socket.gethostbyname(domain)
+            logging.info(f"Domain IP ({domain_ip}) == Public IP ({self.ip})")
+            return domain_ip == self.ip
         except:
             return False
 
