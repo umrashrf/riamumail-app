@@ -27,6 +27,7 @@ DOCKER_IMAGE = "mailexp:latest"
 DOCKER_CONTAINER = "mailexp"
 
 API_BASE = "https://email.riamu.io/api"
+//API_BASE = "http://localhost:8081/api"
 
 
 def setup_logging():
@@ -347,19 +348,19 @@ class SetupApp(toga.App):
     def check_domain_availability_http(self, domain):
         try:
             # Read username, domain, password, email
-            username, domain, password, email = self.get_user_config()
-            username = username.lower()
+            config = self.collect_config()
 
             r = requests.get(
                 API_BASE + "/domain/check",
                 params={
-                    "email": email,
-                    "username": username,
-                    "password": password,
+                    "email": config["email"],
+                    "username": config["username"],
+                    "password": config["password"],
                     "domain": domain,
                 },
                 timeout=5,
             )
+            logging.info(f"Check domain status ({r.status_code}): {r.url}")
             r.raise_for_status()
             data = r.json()
             return data.get("available")
@@ -954,6 +955,7 @@ class SetupApp(toga.App):
     def collect_config(self):
         return {
             "domain": self.domain_input.value,
+            "email": self.email_display.value,
             "username": self.firstname_input.value,
             "familyname": self.familyname_input.value,
             "password": self.password_input.value,
@@ -975,6 +977,7 @@ class SetupApp(toga.App):
             CONFIG_PATH.mkdir(exist_ok=True)
             with open(CONFIG_FILE, "w") as f:
                 json.dump(data, f)
+                f.write("\n")
             logging.info("Config saved")
         except Exception:
             logging.exception("Failed to save config")
@@ -994,16 +997,15 @@ class SetupApp(toga.App):
     def release_domain(self, domain):
         try:
             # Read username, domain, password, email
-            username, domain, password, email = self.get_user_config()
-            username = username.lower()
+            config = self.collect_config()
 
             r = requests.post(
                 API_BASE + "/domain/release",
                 json={
                     "domain": domain,
-                    "email": email,
-                    "username": username,
-                    "password": password,
+                    "email": config["email"],
+                    "username": config["username"],
+                    "password": config["password"],
                 },
                 timeout=10,
             )
@@ -1017,16 +1019,15 @@ class SetupApp(toga.App):
     def reserve_domain(self, domain):
         try:
             # Read username, domain, password, email
-            username, domain, password, email = self.get_user_config()
-            username = username.lower()
+            config = self.collect_config()
 
             r = requests.post(
                 API_BASE + "/domain/reserve",
                 json={
+                    "email": config["email"],
+                    "username": config["username"],
+                    "password": config["password"],
                     "domain": domain,
-                    "email": email,
-                    "username": username,
-                    "password": password,
                     "ipAddress": self.ip,
                 },
                 timeout=10,
@@ -1041,16 +1042,15 @@ class SetupApp(toga.App):
     def update_domain(self, domain):
         try:
             # Read username, domain, password, email
-            username, domain, password, email = self.get_user_config()
-            username = username.lower()
+            config = self.collect_config()
 
             r = requests.post(
                 API_BASE + "/domain/update",
                 json={
+                    "email": config["email"],
+                    "username": config["username"],
+                    "password": config["password"],
                     "domain": domain,
-                    "email": email,
-                    "username": username,
-                    "password": password,
                     "ipAddress": self.ip,
                 },
                 timeout=10,
