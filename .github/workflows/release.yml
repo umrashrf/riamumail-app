@@ -33,6 +33,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
+            libcanberra-gtk3-module \
             libgtk-3-dev \
             libwebkit2gtk-4.0-dev \
             libgirepository1.0-dev \
