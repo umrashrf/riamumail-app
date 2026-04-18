@@ -666,7 +666,7 @@ class SetupApp(toga.App):
 
         try:
             ip_addr = requests.get("https://ipecho.net/plain", timeout=5).text.strip()
-            logging.info("Public IP: ", ip_addr)
+            logging.info(f"Public IP: {ip_addr}")
             return ip_addr
         except Exception:
             logging.exception("Failed to fetch public IP")
