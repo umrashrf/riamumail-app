@@ -346,9 +346,18 @@ class SetupApp(toga.App):
 
     def check_domain_availability_http(self, domain):
         try:
+            # Read username, domain, password, email
+            username, domain, password, email = self.get_user_config()
+            username = username.lower()
+
             r = requests.get(
                 API_BASE + "/domain/check",
-                params={"domain": domain},
+                params={
+                    "email": email,
+                    "username": username,
+                    "password": password,
+                    "domain": domain,
+                },
                 timeout=5,
             )
             r.raise_for_status()
