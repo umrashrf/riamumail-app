@@ -1059,7 +1059,7 @@ class SetupApp(toga.App):
             logging.info(f"Reserved domain: {domain}")
             return True
         except Exception:
-            logging.exception(f"Failed to reserve domain: {domain}")
+            logging.exception(f"Failed to update domain: {domain}")
             return False
 
     def open_thunderbird(self, widget):
