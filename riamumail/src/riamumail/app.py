@@ -27,7 +27,7 @@ DOCKER_IMAGE = "mailexp:latest"
 DOCKER_CONTAINER = "mailexp"
 
 API_BASE = "https://email.riamu.io/api"
-#API_BASE = "http://localhost:8081/api"
+# API_BASE = "http://localhost:8081/api"
 
 
 def setup_logging():
@@ -665,7 +665,9 @@ class SetupApp(toga.App):
         socket.getaddrinfo = getaddrinfo_ipv4
 
         try:
-            return requests.get("https://ipecho.net/plain", timeout=5).text.strip()
+            ip_addr = requests.get("https://ipecho.net/plain", timeout=5).text.strip()
+            logging.info("Public IP: ", ip_addr)
+            return ip_addr
         except Exception:
             logging.exception("Failed to fetch public IP")
             return "Unknown"
