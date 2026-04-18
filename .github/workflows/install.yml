@@ -165,7 +165,7 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak scrot xvfb
+          sudo apt-get install -y flatpak scrot xvfb libcanberra-gtk3-module
 
           # Install the bundle
           flatpak install --user --noninteractive ./${{ steps.release.outputs.name }}
