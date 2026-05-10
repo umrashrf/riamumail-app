@@ -32,6 +32,7 @@ universal_build = true
 signing_identity = "-"
 installer_signing_identity = "-"
 requires = [
+    "toga",
     "toga-cocoa~=0.5.0",
     "std-nslog~=1.0.3",
 ]
