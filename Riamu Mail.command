@@ -14,7 +14,7 @@ if [ -d "$DIR" ]; then
 else
     git clone https://github.com/umrashrf/riamumail-app.git "$DIR"
     cd "$DIR" || exit
-    cp bin/mac/Riamu\ Mail.command /Applications
+    cp Riamu\ Mail.command /Applications
     $PYTHON_EXEC -m venv venv
     venv/bin/python3 -m pip install -U pip
     venv/bin/python3 -m pip install -U ./riamumail
