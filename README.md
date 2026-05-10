@@ -9,6 +9,8 @@ Riamu Mail is part of a mail experiment. Checkout https://github.com/umrashrf/ma
 ## Run (locally)
 
 ```
+git clone https://github.com/umrashrf/riamumail-app
+python3 -m venv venv
 . venv/bin/activate
 python3 -m riamumail
 ```
