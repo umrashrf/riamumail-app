@@ -6,6 +6,13 @@ Riamu Mail is part of a mail experiment. Checkout https://github.com/umrashrf/ma
 
 ![Screenshot](assets/img/Screenshot1.png)
 
+## Run (locally)
+
+```
+. venv/bin/activate
+python3 -m riamumail
+```
+
 ## Troubleshoot
 
 Log file is located at ~/.riamumail/app.log on Linux and Mac.
