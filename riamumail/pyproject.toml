@@ -1,198 +1,136 @@
-# This project was generated with 0.3.26 using template: https://github.com/beeware/briefcase-template @ v0.3.26
-[tool.briefcase]
-project_name = "Riamu Mail"
-bundle = "com.riamumail"
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "riamumail"
 version = "0.5.5"
-url = "https://email.riamu.io"
-license.file = "LICENSE"
-author = "Umair Ashraf"
-author_email = "umair@ashraf.riamumail.com"
-
-[tool.briefcase.app.riamumail]
-formal_name = "Riamu Mail"
-description = "Self hosted mail server running on port 36245, email was meant to be distributed and not owned "
-long_description = """More details about the app should go here.
-"""
-sources = [
-    "src/riamumail",
+description = "Self hosted mail server running on port 36245, email was meant to be distributed and not owned"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Umair Ashraf", email = "umair@ashraf.riamumail.com"}
 ]
-test_sources = [
-    "tests",
-]
-
-requires = [
-    "toga",
-    "requests",
-]
-test_requires = [
-    "pytest",
+keywords = ["email", "mail-server", "self-hosted"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
-[tool.briefcase.app.riamumail.macOS]
-universal_build = true
-signing_identity = "-"
-installer_signing_identity = "-"
-requires = [
-    "toga-cocoa~=0.5.0",
-    "std-nslog~=1.0.3",
+# Core dependencies that work across all platforms
+dependencies = [
+    "toga>=0.5.0,<0.6.0",
+    "requests>=2.25.0",
 ]
 
-[tool.briefcase.app.riamumail.linux]
-requires = [
-    "toga-gtk~=0.5.0",
-    # PyGObject 3.52.1 enforces a requirement on libgirepository-2.0-dev. This library
-    # isn't available on Debian 12/Ubuntu 22.04. If you don't need to support those (or
-    # older) releases, you can remove this version pin. See beeware/toga#3143.
-    "pygobject < 3.52.1",
+[project.optional-dependencies]
+# Platform-specific dependencies
+macos = [
+    "toga-cocoa>=0.5.0,<0.6.0",
+    "std-nslog>=1.0.0,<2.0.0",
+]
+windows = [
+    "toga-winforms>=0.5.0,<0.6.0",
+]
+linux = [
+    "toga-gtk>=0.5.0,<0.6.0",
+    "pygobject<3.52.1",  # Compatibility with Debian 12/Ubuntu 22.04
+]
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+# All platform dependencies (useful for testing)
+all = [
+    "toga-cocoa>=0.5.0,<0.6.0",
+    "std-nslog>=1.0.0,<2.0.0",
+    "toga-winforms>=0.5.0,<0.6.0",
+    "toga-gtk>=0.5.0,<0.6.0",
+    "pygobject<3.52.1",
 ]
 
-[tool.briefcase.app.riamumail.linux.system.debian]
-system_requires = [
-    # Needed to compile pycairo wheel
-    "libcairo2-dev",
-    # One of the following two packages are needed to compile PyGObject wheel. If you
-    # remove the pygobject pin in the requires list, you should also change to the
-    # version 2.0 of the girepository library. See beeware/toga#3143.
-    "libgirepository1.0-dev",
-    # "libgirepository-2.0-dev",
+[project.urls]
+Homepage = "https://email.riamu.io"
+Repository = "https://github.com/yourusername/riamumail"
+Documentation = "https://email.riamu.io/docs"
+"Bug Tracker" = "https://github.com/yourusername/riamumail/issues"
+
+[project.scripts]
+riamumail = "riamumail.app:main"
+
+[tool.setuptools]
+packages = ["riamumail"]
+
+[tool.setuptools.package-dir]
+riamumail = "src/riamumail"
+
+[tool.setuptools.package-data]
+riamumail = ["resources/*", "resources/**/*"]
+
+# pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=riamumail --cov-report=term-missing"
+
+# black code formatter configuration
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+# mypy type checker configuration
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+# coverage configuration
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
 ]
-
-system_runtime_requires = [
-    # Needed to provide GTK and its GI bindings
-    "gir1.2-gtk-3.0",
-    # One of the following two packages are needed to use PyGObject at runtime. If you
-    # remove the pygobject pin in the requires list, you should also change to the
-    # version 2.0 of the girepository library. See beeware/toga#3143.
-    "libgirepository-1.0-1",
-    # "libgirepository-2.0-0",
-    # Dependencies that GTK looks for at runtime
-    "libcanberra-gtk3-module",
-    # Needed to provide WebKit2 at runtime
-    # Note: Debian 11 requires gir1.2-webkit2-4.0 instead
-    # "gir1.2-webkit2-4.1",
-]
-
-[tool.briefcase.app.riamumail.linux.system.rhel]
-system_requires = [
-    # Needed to compile pycairo wheel
-    "cairo-gobject-devel",
-    # Needed to compile PyGObject wheel
-    "gobject-introspection-devel",
-]
-
-system_runtime_requires = [
-    # Needed to support Python bindings to GTK
-    "gobject-introspection",
-    # Needed to provide GTK
-    "gtk3",
-    # Dependencies that GTK looks for at runtime
-    "libcanberra-gtk3",
-    # Needed to provide WebKit2 at runtime
-    # "webkit2gtk3",
-]
-
-[tool.briefcase.app.riamumail.linux.system.suse]
-system_requires = [
-    # Needed to compile pycairo wheel
-    "cairo-devel",
-    # Needed to compile PyGObject wheel
-    "gobject-introspection-devel",
-]
-
-system_runtime_requires = [
-    # Needed to provide GTK
-    "gtk3",
-    # Needed to support Python bindings to GTK
-    "gobject-introspection", "typelib(Gtk) = 3.0",
-    # Dependencies that GTK looks for at runtime
-    "libcanberra-gtk3-module",
-    # Needed to provide WebKit2 at runtime
-    # "libwebkit2gtk3", "typelib(WebKit2)",
-]
-
-[tool.briefcase.app.riamumail.linux.system.arch]
-system_requires = [
-    # Needed to compile pycairo wheel
-    "cairo",
-    # Needed to compile PyGObject wheel
-    "gobject-introspection",
-    # Runtime dependencies that need to exist so that the
-    # Arch package passes final validation.
-    # Needed to provide GTK
-    "gtk3",
-    # Dependencies that GTK looks for at runtime
-    "libcanberra",
-    # Needed to provide WebKit2
-    # "webkit2gtk",
-]
-
-system_runtime_requires = [
-    # Needed to provide GTK
-    "gtk3",
-    # Needed to provide PyGObject bindings
-    "gobject-introspection-runtime",
-    # Dependencies that GTK looks for at runtime
-    "libcanberra",
-    # Needed to provide WebKit2 at runtime
-    # "webkit2gtk",
-]
-
-[tool.briefcase.app.riamumail.linux.appimage]
-manylinux = "manylinux_2_28"
-
-system_requires = [
-    # Needed to compile pycairo wheel
-    "cairo-gobject-devel",
-    # Needed to compile PyGObject wheel
-    "gobject-introspection-devel",
-    # Needed to provide GTK
-    "gtk3-devel",
-    # Dependencies that GTK looks for at runtime, that need to be
-    # in the build environment to be picked up by linuxdeploy
-    "libcanberra-gtk3",
-    "PackageKit-gtk3-module",
-    "gvfs-client",
-]
-
-linuxdeploy_plugins = [
-    "DEPLOY_GTK_VERSION=3 gtk",
-]
-
-[tool.briefcase.app.riamumail.linux.flatpak]
-flatpak_runtime = "org.gnome.Platform"
-flatpak_runtime_version = "48"
-flatpak_sdk = "org.gnome.Sdk"
-
-[tool.briefcase.app.riamumail.windows]
-requires = [
-    "toga-winforms~=0.5.0",
-]
-
-# Mobile deployments
-[tool.briefcase.app.riamumail.iOS]
-requires = [
-    "toga-iOS~=0.5.0",
-    "std-nslog~=1.0.3",
-]
-
-[tool.briefcase.app.riamumail.android]
-requires = [
-    "toga-android~=0.5.0",
-]
-
-base_theme = "Theme.MaterialComponents.Light.DarkActionBar"
-
-build_gradle_dependencies = [
-    "com.google.android.material:material:1.13.0",
-    # Needed for DetailedList
-    # "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0",
-    # Needed for MapView
-    # "org.osmdroid:osmdroid-android:6.1.20",
-]
-
-# Web deployments
-[tool.briefcase.app.riamumail.web]
-requires = [
-    "toga-web~=0.5.0",
-]
-
