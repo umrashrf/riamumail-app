@@ -21,7 +21,8 @@ test_sources = [
 ]
 
 requires = [
-    "requests"
+    "toga",
+    "requests",
 ]
 test_requires = [
     "pytest",
