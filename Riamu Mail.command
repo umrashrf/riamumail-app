@@ -8,11 +8,14 @@ else
     PYTHON_EXEC=python
 fi
 
-DIR=/Applications/Riamu\ Mail
+DIR="/Applications/Riamu Mail"
 if [ -d "$DIR" ]; then
     cd "$DIR" || exit
 else
-    git clone https://github.com/umrashrf/riamumail-app.git "$DIR"
+    curl -L -o /tmp/repo-main.zip https://github.com/umrashrf/riamumail-app/archive/main.zip
+    unzip /tmp/repo-main.zip -d /tmp/
+    mv /tmp/riamumail-app-main "$DIR"
+    rm /tmp/repo-main.zip
     cd "$DIR" || exit
     cp Riamu\ Mail.command /Applications
     $PYTHON_EXEC -m venv venv

@@ -14,13 +14,19 @@ $DIR = "$env:LOCALAPPDATA\Riamu Mail"
 if (Test-Path $DIR) {
     Set-Location $DIR
 } else {
-    git clone https://github.com/umrashrf/riamumail-app.git $DIR
-    if (-not $?) { exit }
+    # Download and extract repository
+    $zipPath = "$env:TEMP\repo-main.zip"
+    $extractPath = "$env:TEMP"
+    
+    Invoke-WebRequest -Uri "https://github.com/umrashrf/riamumail-app/archive/main.zip" -OutFile $zipPath
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+    Move-Item "$extractPath\riamumail-app-main" $DIR
+    Remove-Item $zipPath
     
     Set-Location $DIR
     if (-not $?) { exit }
     
-    # Copy shortcut to Start Menu or Desktop (Windows equivalent of /Applications)
+    # Copy shortcut to Start Menu (Windows equivalent of /Applications)
     $StartMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
     Copy-Item "Riamu Mail.lnk" $StartMenuPath -ErrorAction SilentlyContinue
     
