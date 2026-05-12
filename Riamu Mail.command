@@ -2,6 +2,25 @@
 
 set -x
 
+# Install Homebrew if not present
+if ! command -v brew &>/dev/null; then
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# Install Docker Desktop
+if ! command -v docker &>/dev/null; then
+    brew install --cask docker
+    open /Applications/Docker.app
+    echo "Waiting for Docker to start..."
+    sleep 10
+fi
+
+# Install Thunderbird
+if [ ! -d "/Applications/Thunderbird.app" ]; then
+    brew install --cask thunderbird
+fi
+
+# Determine Python executable
 if command -v python3 &>/dev/null; then
     PYTHON_EXEC=python3
 else
