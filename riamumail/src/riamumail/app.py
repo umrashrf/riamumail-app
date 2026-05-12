@@ -64,10 +64,7 @@ class SetupApp(toga.App):
         self.domain_ok = False
         self.port_ok = False
 
-        if CONFIG_FILE.exists():
-            self.show_setup_screen()
-        else:
-            self.show_welcome_screen()
+        self.show_welcome_screen()
 
         self.main_window.show()
 
@@ -154,7 +151,7 @@ class SetupApp(toga.App):
                 ),
                 toga.Button(
                     "Select Pro",
-                    on_press=lambda w: webbrowser.open("https://riamu.mail/pro"),
+                    on_press=lambda w: webbrowser.open("https://email.riamu.io/pricing"),
                     style=button_style,
                 ),
             ],
@@ -179,7 +176,7 @@ class SetupApp(toga.App):
                 ),
                 toga.Button(
                     "Select Enterprise",
-                    on_press=lambda w: webbrowser.open("https://riamu.mail/enterprise"),
+                    on_press=lambda w: webbrowser.open("https://email.riamu.io/pricing"),
                     style=button_style,
                 ),
             ],
