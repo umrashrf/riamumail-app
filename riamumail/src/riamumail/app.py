@@ -1289,6 +1289,44 @@ CMD ["-F"]
         config = self.load_config()
         return config.get("upnp_enabled", False)
 
+    def is_port_forwarded_via_upnp(self, port):
+        """
+        Check if a UPnP port mapping already exists for the given port.
+        Returns True if mapping exists, False otherwise.
+        """
+        import miniupnpc
+
+        try:
+            upnp = miniupnpc.UPnP()
+            upnp.discoverdelay = 200
+
+            devices = upnp.discover()
+            if devices == 0:
+                logging.info("No UPnP devices found")
+                return False
+
+            upnp.selectigd()
+
+            # Check if mapping exists
+            try:
+                existing_mapping = upnp.getspecificportmapping(port, "TCP")
+                if existing_mapping:
+                    logging.info(
+                        f"UPnP mapping exists for port {port}: {existing_mapping}"
+                    )
+                    return True
+                return False
+            except Exception:
+                # getspecificportmapping throws exception if mapping doesn't exist
+                return False
+
+        except ImportError:
+            logging.error("miniupnpc library not installed")
+            return False
+        except Exception:
+            logging.exception("Failed to check UPnP port mapping")
+            return False
+
     def setup_upnp_port_forwarding(self):
         """
         Set up UPnP port forwarding for port 36245.
@@ -1299,13 +1337,15 @@ CMD ["-F"]
         port = 36245
 
         try:
-            logging.info("Attempting UPnP port forwarding setup")
+            logging.info(f"Attempting UPnP port forwarding setup for port {port}")
 
-            # Check if port is already open via external check
-            if self.check_port(port):
-                logging.info(f"Port {port} is already accessible externally")
-                # Still try to add UPnP mapping in case it's manually opened
-                # and we want to take over management
+            # Check if UPnP mapping already exists (not external accessibility)
+            if self.is_port_forwarded_via_upnp(port):
+                logging.info(
+                    f"UPnP mapping already exists for port {port}, skipping setup"
+                )
+                self.update_config_upnp_status(True)
+                return True
 
             # Initialize UPnP
             upnp = miniupnpc.UPnP()
@@ -1327,16 +1367,6 @@ CMD ["-F"]
             # Get external IP
             external_ip = upnp.externalipaddress()
             logging.info(f"External IP: {external_ip}")
-
-            # Check if mapping already exists
-            existing_mapping = upnp.getspecificportmapping(port, "TCP")
-            if existing_mapping:
-                logging.info(
-                    f"UPnP mapping already exists for port {port}: {existing_mapping}"
-                )
-                # Update config to track that we're managing this
-                self.update_config_upnp_status(True)
-                return True
 
             # Add port mapping (0 = indefinite lease)
             result = upnp.addportmapping(
