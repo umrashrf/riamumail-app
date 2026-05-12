@@ -1284,8 +1284,164 @@ CMD ["-F"]
             )
             raise
 
+    def is_upnp_managed(self):
+        """Check if the current setup is using UPnP (tracked in config)"""
+        config = self.load_config()
+        return config.get("upnp_enabled", False)
+
+    def setup_upnp_port_forwarding(self):
+        """
+        Set up UPnP port forwarding for port 36245.
+        Returns True if successful, False otherwise.
+        """
+        import miniupnpc
+
+        port = 36245
+
+        try:
+            logging.info("Attempting UPnP port forwarding setup")
+
+            # Check if port is already open via external check
+            if self.check_port(port):
+                logging.info(f"Port {port} is already accessible externally")
+                # Still try to add UPnP mapping in case it's manually opened
+                # and we want to take over management
+
+            # Initialize UPnP
+            upnp = miniupnpc.UPnP()
+            upnp.discoverdelay = 200
+
+            # Discover UPnP devices
+            logging.info("Discovering UPnP devices...")
+            devices = upnp.discover()
+
+            if devices == 0:
+                logging.warning("No UPnP devices found")
+                return False
+
+            logging.info(f"Found {devices} UPnP device(s)")
+
+            # Select IGD (Internet Gateway Device)
+            upnp.selectigd()
+
+            # Get external IP
+            external_ip = upnp.externalipaddress()
+            logging.info(f"External IP: {external_ip}")
+
+            # Check if mapping already exists
+            existing_mapping = upnp.getspecificportmapping(port, "TCP")
+            if existing_mapping:
+                logging.info(
+                    f"UPnP mapping already exists for port {port}: {existing_mapping}"
+                )
+                # Update config to track that we're managing this
+                self.update_config_upnp_status(True)
+                return True
+
+            # Add port mapping (0 = indefinite lease)
+            result = upnp.addportmapping(
+                port,  # external port
+                "TCP",  # protocol
+                upnp.lanaddr,  # internal IP
+                port,  # internal port
+                "Riamu Mail Server",  # description
+                "",  # remote host (empty = any)
+                0,  # lease duration (0 = indefinite)
+            )
+
+            if result:
+                logging.info(
+                    f"Successfully opened port {port} via UPnP (indefinite lease)"
+                )
+                # Track in config that UPnP is managing this port
+                self.update_config_upnp_status(True)
+                return True
+            else:
+                logging.warning(f"UPnP port mapping failed for port {port}")
+                self.update_config_upnp_status(False)
+                return False
+
+        except ImportError:
+            logging.error(
+                "miniupnpc library not installed. Install with: pip install miniupnpc"
+            )
+            return False
+        except Exception:
+            logging.exception("UPnP setup failed")
+            return False
+
+    def cleanup_upnp_port_forwarding(self):
+        """
+        Remove UPnP port forwarding for port 36245.
+        Only removes if we created it (tracked in config).
+        Returns True if successful, False otherwise.
+        """
+        import miniupnpc
+
+        port = 36245
+
+        # Only clean up if we're managing the UPnP
+        if not self.is_upnp_managed():
+            logging.info("UPnP not managed by app, skipping cleanup")
+            return True
+
+        try:
+            logging.info("Removing UPnP port forwarding")
+
+            upnp = miniupnpc.UPnP()
+            upnp.discoverdelay = 200
+
+            devices = upnp.discover()
+            if devices == 0:
+                logging.warning("No UPnP devices found for cleanup")
+                self.update_config_upnp_status(False)
+                return False
+
+            upnp.selectigd()
+
+            # Remove port mapping
+            result = upnp.deleteportmapping(port, "TCP")
+
+            if result:
+                logging.info(f"Successfully removed UPnP port mapping for port {port}")
+                self.update_config_upnp_status(False)
+                return True
+            else:
+                logging.warning(f"Failed to remove UPnP port mapping for port {port}")
+                return False
+
+        except ImportError:
+            logging.error("miniupnpc library not installed")
+            return False
+        except Exception:
+            logging.exception("UPnP cleanup failed")
+            return False
+
+    def update_config_upnp_status(self, enabled):
+        """Update config to track UPnP management status"""
+        try:
+            config = self.load_config()
+            config["upnp_enabled"] = enabled
+            self.save_config(config)
+        except Exception:
+            logging.exception("Failed to update UPnP status in config")
+
     def start_container(self):
         logging.info("Starting container")
+
+        # Add UPnP port forwarding before starting container
+        try:
+            self.ui(self.add_check, "Opening port via UPnP", None)
+            success = self.setup_upnp_port_forwarding()
+            self.ui(self.add_check, "Opening port via UPnP", success)
+
+            if not success:
+                logging.warning("UPnP failed, port may need manual forwarding")
+        except Exception:
+            logging.exception("UPnP port forwarding failed")
+            self.ui(self.add_check, "Opening port via UPnP", False)
+
+        # Start the container
         self.run_subprocess(
             [
                 "docker",
@@ -1309,6 +1465,13 @@ CMD ["-F"]
 
     def stop_container(self):
         logging.info("Stopping container")
+
+        # Clean up UPnP port forwarding (only if we manage it)
+        try:
+            self.cleanup_upnp_port_forwarding()
+        except Exception:
+            logging.exception("UPnP cleanup failed during container stop")
+
         self.run_subprocess(["docker", "rm", "-f", DOCKER_CONTAINER])
 
     def toggle_container(self, widget):
