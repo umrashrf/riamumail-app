@@ -24,4 +24,4 @@ else
 fi
 cd riamumail/src || exit
 nohup ../../venv/bin/python3 -m riamumail > /dev/null 2>&1 &
-osascript -e 'tell application "Terminal" to close first window' & exit
+osascript -e 'tell application "Terminal" to close first window' & exit || exit
