@@ -73,7 +73,6 @@ Write-Host "Downloading Riamu Mail..."
 Invoke-WebRequest -Uri "https://github.com/umrashrf/riamumail-app/archive/main.zip" -OutFile $zipPath
 Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 Move-Item "$extractPath\riamumail-app-main" $DIR
-Remove-Item -Path "$extractPath\riamumail-app-main" -Recurse -Force
 Remove-Item $zipPath
 
 Set-Location $DIR
