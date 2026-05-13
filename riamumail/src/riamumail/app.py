@@ -1497,6 +1497,8 @@ CMD ["-F"]
             ]
         )
 
+        self.start_checks()
+
     def stop_container(self):
         logging.info("Stopping container")
 
@@ -1507,6 +1509,8 @@ CMD ["-F"]
             logging.exception("UPnP cleanup failed during container stop")
 
         self.run_subprocess(["docker", "rm", "-f", DOCKER_CONTAINER])
+
+        self.start_checks()
 
     def toggle_container(self, widget):
         threading.Thread(target=self.toggle_container_safe, daemon=True).start()
