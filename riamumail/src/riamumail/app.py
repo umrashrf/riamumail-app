@@ -1497,7 +1497,7 @@ CMD ["-F"]
             ]
         )
 
-        self.start_checks()
+        self.app.loop.call_soon_threadsafe(self.start_checks, None)
 
     def stop_container(self):
         logging.info("Stopping container")
@@ -1510,7 +1510,7 @@ CMD ["-F"]
 
         self.run_subprocess(["docker", "rm", "-f", DOCKER_CONTAINER])
 
-        self.start_checks()
+        self.app.loop.call_soon_threadsafe(self.start_checks, None)
 
     def toggle_container(self, widget):
         threading.Thread(target=self.toggle_container_safe, daemon=True).start()
