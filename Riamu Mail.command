@@ -34,6 +34,7 @@ fi
 curl -L -o /tmp/repo-main.zip https://github.com/umrashrf/riamumail-app/archive/main.zip
 unzip /tmp/repo-main.zip -d /tmp/
 mv /tmp/riamumail-app-main "$DIR"
+rm -rf /tmp/riamumail-app-main/
 rm /tmp/repo-main.zip
 cd "$DIR" || exit
 cp Riamu\ Mail.command /Applications
