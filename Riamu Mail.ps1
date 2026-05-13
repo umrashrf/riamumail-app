@@ -61,47 +61,46 @@ if (Get-Command python3 -ErrorAction SilentlyContinue) {
 $DIR = "$env:LOCALAPPDATA\Riamu Mail"
 
 if (Test-Path $DIR) {
-    Write-Host "Removing existing Riamu Mail directory..."
-    Remove-Item -Path $DIR -Recurse -Force
-}
-
-# Download and extract repository
-$zipPath = "$env:TEMP\repo-main.zip"
-$extractPath = "$env:TEMP"
-
-Write-Host "Downloading Riamu Mail..."
-Invoke-WebRequest -Uri "https://github.com/umrashrf/riamumail-app/archive/main.zip" -OutFile $zipPath
-Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
-Move-Item "$extractPath\riamumail-app-main" $DIR
-Remove-Item $zipPath
-
-Set-Location $DIR
-if (-not $?) { exit }
-
-# Create shortcut in Start Menu
-$StartMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
-
-# If .lnk exists, copy it; otherwise create a shortcut
-if (Test-Path "Riamu Mail.lnk") {
-    Copy-Item "Riamu Mail.lnk" $StartMenuPath -ErrorAction SilentlyContinue
+    Set-Location $DIR
 } else {
-    # Create shortcut programmatically
-    $WshShell = New-Object -ComObject WScript.Shell
-    $Shortcut = $WshShell.CreateShortcut("$StartMenuPath\Riamu Mail.lnk")
-    $Shortcut.TargetPath = "$DIR\venv\Scripts\python.exe"
-    $Shortcut.Arguments = "-m riamumail"
-    $Shortcut.WorkingDirectory = "$DIR\riamumail\src"
-    $Shortcut.Save()
+    # Download and extract repository
+    $zipPath = "$env:TEMP\repo-main.zip"
+    $extractPath = "$env:TEMP"
+    
+    Write-Host "Downloading Riamu Mail..."
+    Invoke-WebRequest -Uri "https://github.com/umrashrf/riamumail-app/archive/main.zip" -OutFile $zipPath
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+    Move-Item "$extractPath\riamumail-app-main" $DIR
+    Remove-Item $zipPath
+    
+    Set-Location $DIR
+    if (-not $?) { exit }
+    
+    # Create shortcut in Start Menu
+    $StartMenuPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+    
+    # If .lnk exists, copy it; otherwise create a shortcut
+    if (Test-Path "Riamu Mail.lnk") {
+        Copy-Item "Riamu Mail.lnk" $StartMenuPath -ErrorAction SilentlyContinue
+    } else {
+        # Create shortcut programmatically
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut("$StartMenuPath\Riamu Mail.lnk")
+        $Shortcut.TargetPath = "$DIR\venv\Scripts\python.exe"
+        $Shortcut.Arguments = "-m riamumail"
+        $Shortcut.WorkingDirectory = "$DIR\riamumail\src"
+        $Shortcut.Save()
+    }
+    
+    Write-Host "Creating virtual environment..."
+    & $PYTHON_EXEC -m venv venv
+    
+    Write-Host "Upgrading pip..."
+    & .\venv\Scripts\python.exe -m pip install -U pip
+    
+    Write-Host "Installing riamumail..."
+    & .\venv\Scripts\python.exe -m pip install -U .\riamumail
 }
-
-Write-Host "Creating virtual environment..."
-& $PYTHON_EXEC -m venv venv
-
-Write-Host "Upgrading pip..."
-& .\venv\Scripts\python.exe -m pip install -U pip
-
-Write-Host "Installing riamumail..."
-& .\venv\Scripts\python.exe -m pip install -U .\riamumail
 
 # Change to riamumail/src directory
 Set-Location riamumail\src

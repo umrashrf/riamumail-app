@@ -92,25 +92,25 @@ fi
 mkdir -p "$DIR"
 
 if [ -d "$DIR/riamumail" ]; then
-    rm -rf "$DIR/riamumail"
-fi
-
-curl -L -o /tmp/repo-main.zip https://github.com/umrashrf/riamumail-app/archive/main.zip
-unzip /tmp/repo-main.zip -d /tmp/
-mv /tmp/riamumail-app-main/* "$DIR/"
-rm /tmp/repo-main.zip
-cd "$DIR" || exit
-
-# Create shortcut/launcher for macOS
-if [ "$OS_TYPE" == "macos" ]; then
-    if [ -f "Riamu Mail.command" ]; then
-        cp "Riamu Mail.command" /Applications/ 2>/dev/null || true
+    cd "$DIR" || exit
+else
+    curl -L -o /tmp/repo-main.zip https://github.com/umrashrf/riamumail-app/archive/main.zip
+    unzip /tmp/repo-main.zip -d /tmp/
+    mv /tmp/riamumail-app-main/* "$DIR/"
+    rm /tmp/repo-main.zip
+    cd "$DIR" || exit
+    
+    # Create shortcut/launcher for macOS
+    if [ "$OS_TYPE" == "macos" ]; then
+        if [ -f "Riamu Mail.command" ]; then
+            cp "Riamu Mail.command" /Applications/ 2>/dev/null || true
+        fi
     fi
+    
+    $PYTHON_EXEC -m venv venv
+    venv/bin/python3 -m pip install -U pip
+    venv/bin/python3 -m pip install -U ./riamumail
 fi
-
-$PYTHON_EXEC -m venv venv
-venv/bin/python3 -m pip install -U pip
-venv/bin/python3 -m pip install -U ./riamumail
 
 cd "$DIR/riamumail/src" || exit
 nohup ../../venv/bin/python3 -m riamumail > /dev/null 2>&1 &
