@@ -22,9 +22,12 @@ LOG_FILE = CONFIG_PATH / "app.log"
 
 MAIL_EXP_REPO = "https://github.com/umrashrf/mailexp.git"
 MAIL_EXP_PATH = CONFIG_PATH / "mailexp"
+MAIL_EXP_ENV_PATH = MAIL_EXP_PATH / ".env"
 
 DOCKER_IMAGE = "mailexp:latest"
 DOCKER_CONTAINER = "mailexp"
+DOCKER_CONTAINER_POSTFIX = "mailexp-postfix"
+DOCKER_CONTAINER_DOVECOT = "mailexp-dovecot"
 
 API_BASE = "https://email.riamu.io/api"
 # API_BASE = "http://localhost:8081/api"
@@ -373,15 +376,15 @@ class SetupApp(toga.App):
             return -1
 
     def set_domain_status(self, status):
-        if status is 1:
+        if status == 1:
             self.domain_status_label.text = "✓ Domain is available"
             self.domain_status_label.style.color = "green"
 
-        elif status is 0:
+        elif status == 0:
             self.domain_status_label.text = "✗ Domain is not available"
             self.domain_status_label.style.color = "red"
 
-        elif status is None:
+        elif status == None:
             self.domain_status_label.text = "⟳ Checking domain availability…"
             self.domain_status_label.style.color = "#f0ad4e"
 
@@ -955,6 +958,9 @@ class SetupApp(toga.App):
             # Save config
             self.save_config(self.collect_config())
 
+            self.build_docker_image()
+            self.start_container()
+
             # Refresh UI checks
             self.ui(self.start_checks)
 
@@ -1091,13 +1097,25 @@ class SetupApp(toga.App):
         logging.info("Cloning mailexp repository")
 
         if MAIL_EXP_PATH.exists():
-            return
-
-        MAIL_EXP_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-        self.run_subprocess(
-            ["/usr/bin/git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)]
-        )
+            self.app.loop.call_soon_threadsafe(
+                self.add_check,
+                "Updating mail server repository",
+                None,
+            )
+            self.run_subprocess(
+                ["/usr/bin/git", "reset", "--hard", "HEAD"], cwd=MAIL_EXP_PATH
+            )
+            self.run_subprocess(["/usr/bin/git", "pull"], cwd=MAIL_EXP_PATH)
+        else:
+            self.app.loop.call_soon_threadsafe(
+                self.add_check,
+                "Cloning mail server repository",
+                None,
+            )
+            MAIL_EXP_PATH.parent.mkdir(parents=True, exist_ok=True)
+            self.run_subprocess(
+                ["/usr/bin/git", "clone", MAIL_EXP_REPO, str(MAIL_EXP_PATH)]
+            )
 
     # ------------------ DOCKER HELPERS ------------------
 
@@ -1114,36 +1132,77 @@ class SetupApp(toga.App):
 
     def docker_container_exists(self):
         try:
-            output = subprocess.check_output(
+            output1 = subprocess.check_output(
                 [
                     "docker",
                     "ps",
                     "-a",
                     "--filter",
-                    f"name={DOCKER_CONTAINER}",
+                    f"name={DOCKER_CONTAINER_POSTFIX}",
                     "--format",
                     "{{.Names}}",
                 ],
                 env=self.SUBPROCESS_ENV,
             ).decode()
-            return DOCKER_CONTAINER in output
+
+            output2 = subprocess.check_output(
+                [
+                    "docker",
+                    "ps",
+                    "-a",
+                    "--filter",
+                    f"name={DOCKER_CONTAINER_DOVECOT}",
+                    "--format",
+                    "{{.Names}}",
+                ],
+                env=self.SUBPROCESS_ENV,
+            ).decode()
+
+            return (
+                DOCKER_CONTAINER_POSTFIX in output1
+                and DOCKER_CONTAINER_DOVECOT in output2
+            )
         except Exception:
             return False
 
     def docker_container_running(self):
         try:
-            output = subprocess.check_output(
-                [
-                    "docker",
-                    "ps",
-                    "--filter",
-                    f"name={DOCKER_CONTAINER}",
-                    "--format",
-                    "{{.Names}}",
-                ],
-                env=self.SUBPROCESS_ENV,
-            ).decode()
-            return DOCKER_CONTAINER in output
+            output1 = (
+                subprocess.check_output(
+                    [
+                        "docker",
+                        "ps",
+                        "--filter",
+                        f"name={DOCKER_CONTAINER_POSTFIX}",
+                        "--format",
+                        "{{.Names}}",
+                    ],
+                    env=self.SUBPROCESS_ENV,
+                )
+                .decode()
+                .strip()
+            )
+
+            output2 = (
+                subprocess.check_output(
+                    [
+                        "docker",
+                        "ps",
+                        "--filter",
+                        f"name={DOCKER_CONTAINER_DOVECOT}",
+                        "--format",
+                        "{{.Names}}",
+                    ],
+                    env=self.SUBPROCESS_ENV,
+                )
+                .decode()
+                .strip()
+            )
+
+            return (
+                DOCKER_CONTAINER_POSTFIX in output1
+                and DOCKER_CONTAINER_DOVECOT in output2
+            )
         except Exception:
             return False
 
@@ -1153,13 +1212,7 @@ class SetupApp(toga.App):
         if not self.git_exists():
             raise RuntimeError("Git is not installed")
 
-        if not MAIL_EXP_PATH.exists():
-            self.app.loop.call_soon_threadsafe(
-                self.add_check,
-                "Cloning mail server repository",
-                None,
-            )
-            self.clone_mailexp_repo()
+        self.clone_mailexp_repo()
 
         # Read username, domain, password, email
         username, domain, password, email = self.get_user_config()
@@ -1269,24 +1322,11 @@ CMD ["-F"]
         dockerfile_path.write_text(dockerfile_content)
         logging.info(f"Replaced Dockerfile for {username}")
 
-        # ------------------ Build Docker image ------------------
-        try:
-            self.app.loop.call_soon_threadsafe(
-                self.add_check,
-                "Building mail server image",
-                None,
-            )
-            self.run_subprocess(
-                ["docker", "build", "-t", DOCKER_IMAGE, "."],
-                cwd=MAIL_EXP_PATH,
-            )
-        except subprocess.CalledProcessError:
-            self.app.loop.call_soon_threadsafe(
-                self.add_check,
-                "Docker build failed (see logs)",
-                False,
-            )
-            raise
+        MAIL_EXP_ENV_PATH.write_text(f"""hostname={domain}
+username={username}
+password={password}
+""")
+        logging.info("env file updated")
 
     def is_upnp_managed(self):
         """Check if the current setup is using UPnP (tracked in config)"""
@@ -1475,29 +1515,20 @@ CMD ["-F"]
             logging.exception("UPnP port forwarding failed")
             self.ui(self.add_check, "Opening port via UPnP", False)
 
-        # Start the container
-        self.run_subprocess(
-            [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                DOCKER_CONTAINER,
-                "--dns",
-                "8.8.8.8",
-                "--hostname",
-                self.domain_input.value,
-                "-p",
-                "36245:36245",
-                "-p",
-                "10143:143",
-                "--restart",
-                "always",
-                DOCKER_IMAGE,
-            ]
-        )
+        try:
+            # Start the container
+            self.run_subprocess(
+                [
+                    "docker-compose",
+                    "up",
+                    "-d",
+                ],
+                cwd=MAIL_EXP_PATH,
+            )
+        except Exception:
+            logging.exception("Failed to start containr")
 
-        self.app.loop.call_soon_threadsafe(self.start_checks, None)
+        self.app.loop.call_soon_threadsafe(self.start_checks)
 
     def stop_container(self):
         logging.info("Stopping container")
@@ -1508,18 +1539,18 @@ CMD ["-F"]
         except Exception:
             logging.exception("UPnP cleanup failed during container stop")
 
-        self.run_subprocess(["docker", "rm", "-f", DOCKER_CONTAINER])
+        try:
+            self.run_subprocess(["docker-compose", "down"], cwd=MAIL_EXP_PATH)
+        except Exception:
+            logging.exception("Failed to stop containr")
 
-        self.app.loop.call_soon_threadsafe(self.start_checks, None)
+        self.app.loop.call_soon_threadsafe(self.start_checks)
 
     def toggle_container(self, widget):
         threading.Thread(target=self.toggle_container_safe, daemon=True).start()
 
     def toggle_container_safe(self):
         try:
-            if not self.docker_image_exists():
-                self.build_docker_image()
-
             if self.docker_container_running():
                 self.stop_container()
             else:
@@ -1547,6 +1578,9 @@ CMD ["-F"]
             if self.docker_container_exists():
                 logging.info("Stopping existing mail container")
                 self.stop_container()
+
+            # Backward compatability
+            self.run_subprocess(["docker", "rm", "-f", DOCKER_CONTAINER])
 
             # Remove image if it exists
             if self.docker_image_exists():
