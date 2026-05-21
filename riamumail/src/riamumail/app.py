@@ -1058,15 +1058,18 @@ class SetupApp(toga.App):
             # Read username, domain, password, email
             config = self.collect_config()
 
+            url = API_BASE + "/domain/update"
+            body = {
+                "email": config["email"],
+                "username": config["username"],
+                "password": config["password"],
+                "domain": domain,
+                "ipAddress": self.ip,
+            }
+            logging.info(f"HTTP {API_BASE + "/domain/update"} {body}")
             r = requests.post(
-                API_BASE + "/domain/update",
-                json={
-                    "email": config["email"],
-                    "username": config["username"],
-                    "password": config["password"],
-                    "domain": domain,
-                    "ipAddress": self.ip,
-                },
+                url,
+                json=body,
                 timeout=10,
             )
             r.raise_for_status()
