@@ -1065,12 +1065,12 @@ class SetupApp(toga.App):
                     "username": config["username"],
                     "password": config["password"],
                     "domain": domain,
-                    "ipAddress": self.ip,
+                    "ipAddress": socket.gethostbyname(domain),
                 },
                 timeout=10,
             )
             r.raise_for_status()
-            logging.info(f"Reserved domain: {domain}")
+            logging.info(f"Reserved domain: {domain}. {r.text}")
             return True
         except Exception:
             logging.exception(f"Failed to update domain: {domain}")
