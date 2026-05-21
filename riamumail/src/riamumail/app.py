@@ -1065,7 +1065,7 @@ class SetupApp(toga.App):
                     "username": config["username"],
                     "password": config["password"],
                     "domain": domain,
-                    "ipAddress": socket.gethostbyname(domain),
+                    "ipAddress": self.ip,
                 },
                 timeout=10,
             )
