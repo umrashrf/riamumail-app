@@ -14,6 +14,7 @@ import socket
 import requests
 import subprocess
 import webbrowser
+import dns.resolver
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".riamumail"
@@ -682,12 +683,20 @@ class SetupApp(toga.App):
     def is_domain_mapped_to_ip(self, domain):
         if not domain:
             return False
+        resolver = dns.resolver.Resolver()
+        resolver.nameservers = ["8.8.8.8", "8.8.4.4"]  # Use Google's DNS server
         try:
-            domain_ip = socket.gethostbyname(domain)
+            answers = resolver.resolve(domain, "A")
+            domain_ip = answers[0].address
             logging.info(f"Domain IP ({domain_ip}) == Public IP ({self.ip})")
             return domain_ip == self.ip
-        except:
-            return False
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, Exception):
+            try:
+                domain_ip = socket.gethostbyname(domain)
+                logging.info(f"Domain IP ({domain_ip}) == Public IP ({self.ip})")
+                return domain_ip == self.ip
+            except:
+                return False
 
     def check_port(self, port):
         try:
