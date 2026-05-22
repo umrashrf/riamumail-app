@@ -55,6 +55,8 @@ jobs:
         working-directory: ${{ github.workspace }}/riamumail
         run: |
           ls
+          mv pyproject.toml pyproject-app.toml
+          mv pyproject-dev.toml pyproject.toml
           test -f pyproject.toml
 
       - name: Build app
